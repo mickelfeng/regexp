@@ -1,0 +1,33 @@
+ZEND_BEGIN_ARG_INFO_EX(arginfo_regexp_void, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_regexp_create, 0, 0, 1)
+    ZEND_ARG_INFO(0, pattern)
+    ZEND_ARG_INFO(0, flags)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_regexp_match, 0, 0, 2)
+    ZEND_ARG_INFO(0, regexp)
+    ZEND_ARG_INFO(0, subject)
+    ZEND_ARG_INFO(1, match)
+    ZEND_ARG_INFO(0, start_offset)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_regexp_self, 0, 0, 1)
+    ZEND_ARG_INFO(0, regexp)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_regexp_replace, 0, 0, 3)
+    ZEND_ARG_INFO(0, regexp)
+    ZEND_ARG_INFO(0, subject)
+    ZEND_ARG_INFO(0, replacement)
+    //ZEND_ARG_INFO(0, limit)
+    //ZEND_ARG_INFO(1, count)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_regexp_split, 0, 0, 2)
+    ZEND_ARG_INFO(0, regexp)
+    ZEND_ARG_INFO(0, subject)
+    ZEND_ARG_INFO(0, limit)
+    //ZEND_ARG_INFO(0, flags)
+ZEND_END_ARG_INFO()
