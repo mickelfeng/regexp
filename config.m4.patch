@@ -1,0 +1,20 @@
+diff --git a/ext/intl/config.m4 b/ext/intl/config.m4
+index 0477c7f..c9e00a9 100755
+--- a/ext/intl/config.m4
++++ b/ext/intl/config.m4
+@@ -65,6 +65,9 @@ if test "$PHP_INTL" != "no"; then
+     transliterator/transliterator.c \
+     transliterator/transliterator_class.c \
+     transliterator/transliterator_methods.c \
++    regexp/regexp.c \
++    regexp/regexp_class.c \
++    regexp/regexp_methods.c \
+     idn/idn.c \
+     $icu_spoof_src, $ext_shared,,$ICU_INCS)
+   PHP_ADD_BUILD_DIR($ext_builddir/collator)
+@@ -79,4 +82,5 @@ if test "$PHP_INTL" != "no"; then
+   PHP_ADD_BUILD_DIR($ext_builddir/transliterator)
+   PHP_ADD_BUILD_DIR($ext_builddir/idn)
+   PHP_ADD_BUILD_DIR($ext_builddir/spoofchecker)
++  PHP_ADD_BUILD_DIR($ext_builddir/regexp)
+ fi

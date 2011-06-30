@@ -1,0 +1,61 @@
+diff --git a/ext/intl/php_intl.c b/ext/intl/php_intl.c
+index 25d9398..6e7f02c 100755
+--- a/ext/intl/php_intl.c
++++ b/ext/intl/php_intl.c
+@@ -68,6 +68,10 @@
+ #include "transliterator/transliterator_class.h"
+ #include "transliterator/transliterator_methods.h"
+ 
++#include "regexp/regexp.h"
++#include "regexp/regexp_class.h"
++#include "regexp/regexp_methods.h"
++
+ #include "idn/idn.h"
+ 
+ #if U_ICU_VERSION_MAJOR_NUM > 3 && U_ICU_VERSION_MINOR_NUM >=2
+@@ -400,6 +404,8 @@ ZEND_BEGIN_ARG_INFO_EX( arginfo_transliterator_error, 0, 0, 1 )
+ 	ZEND_ARG_OBJ_INFO( 0, trans, Transliterator, 0 )
+ ZEND_END_ARG_INFO()
+ 
++#include "regexp/regexp_arginfo.h"
++
+ /* }}} */
+ 
+ /* {{{ intl_functions
+@@ -518,7 +524,7 @@ zend_function_entry intl_functions[] = {
+ 	PHP_FE( resourcebundle_locales, arginfo_resourcebundle_locales_proc )
+ 	PHP_FE( resourcebundle_get_error_code, arginfo_resourcebundle_get_error_code_proc )
+ 	PHP_FE( resourcebundle_get_error_message, arginfo_resourcebundle_get_error_message_proc )
+-	
++
+ 	/* Transliterator functions */
+ 	PHP_FE( transliterator_create, arginfo_transliterator_create )
+ 	PHP_FE( transliterator_create_from_rules, arginfo_transliterator_create_from_rules )
+@@ -528,6 +534,8 @@ zend_function_entry intl_functions[] = {
+ 	PHP_FE( transliterator_get_error_code, arginfo_transliterator_error )
+ 	PHP_FE( transliterator_get_error_message, arginfo_transliterator_error )
+ 
++    #include "regexp/regexp_fe.h"
++
+ 	/* common functions */
+ 	PHP_FE( intl_get_error_code, intl_0_args )
+ 	PHP_FE( intl_get_error_message, intl_0_args )
+@@ -593,7 +601,7 @@ PHP_MINIT_FUNCTION( intl )
+ 	REGISTER_STRING_CONSTANT("INTL_ICU_VERSION", U_ICU_VERSION, CONST_PERSISTENT | CONST_CS);
+ #ifdef U_ICU_DATA_VERSION
+ 	REGISTER_STRING_CONSTANT("INTL_ICU_DATA_VERSION", U_ICU_DATA_VERSION, CONST_PERSISTENT | CONST_CS);
+-#endif	
++#endif
+ 
+ 	/* Register 'Collator' PHP class */
+ 	collator_register_Collator_class( TSRMLS_C );
+@@ -638,6 +646,9 @@ PHP_MINIT_FUNCTION( intl )
+ 	/* Register Transliterator constants */
+ 	transliterator_register_constants( INIT_FUNC_ARGS_PASSTHRU );
+ 
++    regexp_register_Regexp_class(TSRMLS_C);
++    regexp_register_constants(INIT_FUNC_ARGS_PASSTHRU);
++
+ 	/* Expose ICU error codes to PHP scripts. */
+ 	intl_expose_icu_error_codes( INIT_FUNC_ARGS_PASSTHRU );
+ 
