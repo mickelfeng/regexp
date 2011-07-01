@@ -41,14 +41,17 @@ typedef struct {
 #define REGEXP_ERROR_CODE_P(ro) &(INTL_ERROR_CODE(REGEXP_ERROR(ro)))
 
 #define REGEXP_METHOD_INIT_VARS              INTL_METHOD_INIT_VARS(Regexp, ro)
-#define REGEXP_METHOD_FETCH_OBJECT_NO_CHECK  INTL_METHOD_FETCH_OBJECT(Regexp, ro)
-#define REGEXP_METHOD_FETCH_OBJECT           \
-    do {                                     \
-        REGEXP_METHOD_FETCH_OBJECT_NO_CHECK; \
-        if (NULL == ro->uregex) {            \
+
+#define REGEXP_METHOD_FETCH_OBJECT(reset)                                                                                \
+    do {                                                                                                                 \
+        ro = (Regexp_object *) zend_object_store_get_object(object TSRMLS_CC);                                           \
+        if (reset) {                                                                                                     \
+            intl_error_reset(INTL_DATA_ERROR_P(ro) TSRMLS_CC);                                                           \
+        }                                                                                                                \
+        if (NULL == ro->uregex) {                                                                                        \
             intl_errors_set(&ro->err, U_ILLEGAL_ARGUMENT_ERROR, "Found unconstructed regular expression", 0 TSRMLS_CC ); \
-            RETURN_FALSE;                    \
-        }                                    \
+            RETURN_FALSE;                                                                                                \
+        }                                                                                                                \
     } while (0);
 
 #define REGEXP_CHECK_STATUS(ro, msg)                                          \

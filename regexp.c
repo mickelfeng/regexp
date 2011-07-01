@@ -10,7 +10,7 @@
 void regexp_register_constants(INIT_FUNC_ARGS)
 {
     if (!Regexp_ce_ptr) {
-        zend_error(E_ERROR, "Collator class not defined");
+        zend_error(E_ERROR, "Regexp class not defined");
         return;
     }
 
