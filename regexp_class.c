@@ -126,6 +126,7 @@ ZEND_BEGIN_ARG_INFO_EX(ainfo_regexp_match, 0, 0, 2)
     ZEND_ARG_INFO(0, subject)
     ZEND_ARG_INFO(1, match)
     ZEND_ARG_INFO(0, start_offset)
+    ZEND_ARG_INFO(0, flags)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(ainfo_regexp_replace, 0, 0, 2)
@@ -138,7 +139,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(ainfo_regexp_split, 0, 0, 1)
     ZEND_ARG_INFO(0, subject)
     ZEND_ARG_INFO(0, limit)
-    //ZEND_ARG_INFO(0, flags)
+    ZEND_ARG_INFO(0, flags)
 ZEND_END_ARG_INFO()
 
 zend_function_entry Regexp_class_functions[] = {

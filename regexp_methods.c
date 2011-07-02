@@ -93,20 +93,44 @@ static void intl_errors_setf_custom_msg(intl_error* err TSRMLS_DC, char *format,
             if (cp_offset < 0) {                                                                              \
                 if (cp_offset < -count_cp) {                                                                  \
                     intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
-                    RETURN_FALSE;                                                                             \
+                    RETVAL_FALSE;                                                                             \
+                    goto end;                                                                                 \
                 }                                                                                             \
                 cu_offset = ustring_len;                                                                      \
                 U16_BACK_N(ustring, 0, cu_offset, -cp_offset);                                                \
             } else {                                                                                          \
                 if (cp_offset >= count_cp) {                                                                  \
                     intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
-                    RETURN_FALSE;                                                                             \
+                    RETVAL_FALSE;                                                                             \
+                    goto end;                                                                                 \
                 }                                                                                             \
                 U16_FWD_N(ustring, cu_offset, ustring_len, cp_offset);                                        \
             }                                                                                                 \
         }                                                                                                     \
     } while (0);
 
+#ifdef ZEND_DEBUG
+# ifdef ZEND_WIN32
+#  define DIRECTORY_SEPARATOR '\\'
+# else
+#  define DIRECTORY_SEPARATOR '/'
+# endif /* ZEND_WIN32 */
+const char *ubasename(const char *filename)
+{
+    const char *c;
+
+    if (NULL == (c = strrchr(filename, DIRECTORY_SEPARATOR))) {
+        return filename;
+    } else {
+        return c + 1;
+    }
+}
+
+# define debug(format, ...) \
+    zend_output_debug_string(0, "%s:%d:" format " in %s()\n", ubasename(__FILE__), __LINE__, ## __VA_ARGS__, __func__)
+#else
+# define debug(format, ...)
+#endif /* ZEND_DEBUG */
 
 static const UChar _UREGEXP_FAKE_USTR[] = { 0 };
 #define UREGEXP_FAKE_USTR _UREGEXP_FAKE_USTR, 0
@@ -200,11 +224,16 @@ PHP_FUNCTION(regexp_match)
     zval *subpats = NULL;
     int32_t start_cu_offset = 0;
     long start_cp_offset = 0;
+    long flags = 0;
 
     REGEXP_METHOD_INIT_VARS
 
-    if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|zl", &object, Regexp_ce_ptr, &subject, &subject_len, &subpats, &start_cp_offset)) {
+    if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|zll", &object, Regexp_ce_ptr, &subject, &subject_len, &subpats, &flags, &start_cp_offset)) {
         intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_match: bad arguments", 0 TSRMLS_CC);
+        RETURN_FALSE;
+    }
+    if (0 != (flags & ~(OFFSET_CAPTURE))) {
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_match: invalid flag(s)", 0 TSRMLS_CC);
         RETURN_FALSE;
     }
 
@@ -220,8 +249,6 @@ PHP_FUNCTION(regexp_match)
         int i;
         char *group;
         int group_len;
-        UChar *ugroup;
-        int32_t ugroup_len;
         int32_t group_count;
         int32_t l, u;
 
@@ -236,7 +263,7 @@ PHP_FUNCTION(regexp_match)
             UTF16_TO_UTF8(ro, group, group_len, usubject + l, u - l);
             add_index_stringl(subpats, i, group, group_len, FALSE);
             // For PREG_OFFSET_CAPTURE:
-            // add_index_stringl(subpats, l, group, group_len, FALSE);
+            // add_index_stringl(subpats, u_countChar32(usubject, l), group, group_len, FALSE);
         }
     }
 
@@ -244,6 +271,7 @@ PHP_FUNCTION(regexp_match)
 end:
         if (NULL != subpats) {
             zval_dtor(subpats);
+            array_init(subpats);
         }
     }
     if (NULL != usubject) {
@@ -264,11 +292,16 @@ PHP_FUNCTION(regexp_match_all)
     int32_t start_cu_offset = 0;
     long start_cp_offset = 0;
     int32_t group_count = 0;
+    long flags = 0;
 
     REGEXP_METHOD_INIT_VARS
 
-    if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|zl", &object, Regexp_ce_ptr, &subject, &subject_len, &subpats, &start_cp_offset)) {
+    if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|zll", &object, Regexp_ce_ptr, &subject, &subject_len, &subpats, &flags, &start_cp_offset)) {
         intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_match_all: bad arguments", 0 TSRMLS_CC);
+        RETURN_FALSE;
+    }
+    if (0 != (flags & ~(OFFSET_CAPTURE|MATCH_ALL_PATTERN_ORDER|MATCH_ALL_SET_ORDER))) {
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_match_all: invalid flag(s)", 0 TSRMLS_CC);
         RETURN_FALSE;
     }
 
@@ -294,8 +327,6 @@ PHP_FUNCTION(regexp_match_all)
             int i;
             char *group;
             int group_len;
-            UChar *ugroup;
-            int32_t ugroup_len;
             int32_t l, u;
             zval *match_groups;
 
@@ -309,7 +340,7 @@ PHP_FUNCTION(regexp_match_all)
                 UTF16_TO_UTF8(ro, group, group_len, usubject + l, u - l);
                 add_index_stringl(match_groups, i, group, group_len, FALSE);
                 // For PREG_OFFSET_CAPTURE:
-                // add_index_stringl(match_groups, l, group, group_len, FALSE);
+                // add_index_stringl(match_groups, u_countChar32(usubject, l), group, group_len, FALSE);
             }
             zend_hash_next_index_insert(Z_ARRVAL_P(subpats), &match_groups, sizeof(zval *), NULL);
         }
@@ -321,6 +352,7 @@ PHP_FUNCTION(regexp_match_all)
 end:
         if (NULL != subpats) {
             zval_dtor(subpats);
+            array_init(subpats);
         }
         RETVAL_FALSE;
     }
@@ -437,18 +469,26 @@ PHP_FUNCTION(regexp_split)
     int32_t last = 0;
     char *group = NULL;
     int group_len = 0;
+    long flags = 0;
     int i;
 
     REGEXP_METHOD_INIT_VARS
 
     array_init(return_value);
 
-    if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l", &object, Regexp_ce_ptr, &subject, &subject_len, &limit)) {
+    if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|ll", &object, Regexp_ce_ptr, &subject, &subject_len, &limit, &flags)) {
         intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_split: bad arguments", 0 TSRMLS_CC);
         RETURN_FALSE;
     }
-
-    // TODO: check limit (if <= 0 : "invalid" ; if == 1 : whole string)
+    if (0 != (flags & ~(OFFSET_CAPTURE|SPLIT_NO_EMPTY|SPLIT_DELIM_CAPTURE))) {
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_split: invalid flag(s)", 0 TSRMLS_CC);
+        RETURN_FALSE;
+    }
+    if (limit <= 0) {
+        limit = INT_MAX;
+    } else if (1 == limit) {
+        //
+    }
 
     REGEXP_METHOD_FETCH_OBJECT(TRUE);
 
@@ -457,24 +497,28 @@ PHP_FUNCTION(regexp_split)
     uregex_setText(ro->uregex, usubject, usubject_len, REGEXP_ERROR_CODE_P(ro));
     REGEXP_CHECK_STATUS(ro, "Error setting text");
     /* We don't use uregex_split, it has a few "limitations" */
-    for (i = 0; i < limit && uregex_findNext(ro->uregex, REGEXP_ERROR_CODE_P(ro)); i++) {
+    for (i = 1; i < limit && uregex_findNext(ro->uregex, REGEXP_ERROR_CODE_P(ro)); i++) {
         int32_t l, u;
 
         REGEXP_GROUP_START(ro, 0, l);
         REGEXP_GROUP_END(ro, 0, u);
-        if (last < l) { // <= to have empty parts
+        if (!(flags & SPLIT_NO_EMPTY) || last < l) {
             UTF16_TO_UTF8(ro, group, group_len, usubject + last, l - last);
-            add_index_stringl(return_value, i, group, group_len, FALSE);
-            // For PREG_OFFSET_CAPTURE:
-            // add_index_stringl(return_value, l, group, group_len, FALSE);
+            if (!(flags & OFFSET_CAPTURE)) {
+                add_next_index_stringl(return_value, group, group_len, FALSE);
+            } else {
+                add_index_stringl(return_value, u_countChar32(usubject, last), group, group_len, FALSE);
+            }
         }
         last = u;
     }
-    if (last < usubject_len) { // <= to have empty parts?
-        group = NULL;
-        group_len = 0;
+    if (!(flags & SPLIT_NO_EMPTY) || last < usubject_len) {
         UTF16_TO_UTF8(ro, group, group_len, usubject + last, usubject_len - last);
-        add_index_stringl(return_value, i, group, group_len, FALSE);
+        if (!(flags & OFFSET_CAPTURE)) {
+            add_next_index_stringl(return_value, group, group_len, FALSE);
+        } else {
+            add_index_stringl(return_value, u_countChar32(usubject, last), group, group_len, FALSE);
+        }
     }
 
     if (FALSE) {
