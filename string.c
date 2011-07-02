@@ -8,6 +8,22 @@
 #include "string.h"
 
 #include <unicode/ubrk.h>
+#include <unicode/uset.h>
+
+/* <To remove> */
+#ifdef ZEND_DEBUG
+# ifdef ZEND_WIN32
+#  define DIRECTORY_SEPARATOR '\\'
+# else
+#  define DIRECTORY_SEPARATOR '/'
+# endif /* ZEND_WIN32 */
+
+# define debug(format, ...) \
+    zend_output_debug_string(0, "%s:%d:" format " in %s()\n", ubasename(__FILE__), __LINE__, ## __VA_ARGS__, __func__)
+#else
+# define debug(format, ...)
+#endif /* ZEND_DEBUG */
+/* </To remove> */
 
 #define CHECK_STATUS(status, msg)                           \
     intl_error_set_code(NULL, status TSRMLS_CC);            \
@@ -55,17 +71,174 @@
     } while (0);
 
 
-PHP_FUNCTION(utf8_chunck_split) // args: string, length
+PHP_FUNCTION(utf8_split)
 {
-    //
+    char *string = NULL;
+    int string_len = 0;
+    long length = 1;
+    int32_t last = 0, cu_offset = 0;
+
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &string, &string_len, &length)) {
+        RETURN_FALSE;
+    }
+    if (length < 1) {
+        RETURN_FALSE;
+    }
+    array_init(return_value);
+    while (cu_offset < string_len) {
+        U8_FWD_N(string, cu_offset, string_len, length);
+        add_next_index_stringl(return_value, string + last, cu_offset - last, TRUE);
+        last = cu_offset;
+    }
 }
 
 PHP_FUNCTION(utf8_count_chars)
 {
-    //
+    enum {
+        ARRAY_ALL_FREQ      = 0,
+        ARRAY_NONNULL_FREQ  = 1,
+        ARRAY_NULL_FREQ     = 2,
+        STRING_NONNULL_FREQ = 3,
+        STRING_NULL_FREQ    = 4,
+        _LAST_MODE
+    };
+
+    UChar32 c;
+    long mode = ARRAY_ALL_FREQ;
+    char *string = NULL;
+    int string_len = 0;
+    int32_t cu_offset = 0;
+    USet *set;
+
+    intl_error_reset(NULL TSRMLS_CC);
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &string, &string_len, &mode)) {
+        RETURN_FALSE;
+    }
+    if (mode < 0 || mode >= _LAST_MODE) {
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unknown mode");
+        RETURN_FALSE;
+    }
+    set = uset_openEmpty();
+    if (mode < STRING_NONNULL_FREQ) {
+        array_init(return_value);
+    }
+    while (cu_offset < string_len) {
+        U8_NEXT(string, cu_offset, string_len, c);
+        switch (mode) {
+            case ARRAY_ALL_FREQ:
+                uset_add(set, c);
+                /* NO BREAK !!! */
+            case ARRAY_NONNULL_FREQ:
+            {
+                zval **tmp;
+                if (zend_hash_index_find(Z_ARRVAL_P(return_value), c, (void **) &tmp) == FAILURE) {
+                    zval *data;
+                    MAKE_STD_ZVAL(data);
+                    ZVAL_LONG(data, 1);
+                    zend_hash_index_update(Z_ARRVAL_P(return_value), c, &data, sizeof(data), NULL);
+                } else {
+                    Z_LVAL_PP(tmp)++;
+                }
+                break;
+            }
+            default:
+                uset_add(set, c);
+        }
+    }
+    if (ARRAY_ALL_FREQ == mode || ARRAY_NULL_FREQ == mode || STRING_NONNULL_FREQ == mode) {
+        uset_complement(set);
+    }
+    switch (mode) {
+        case ARRAY_NONNULL_FREQ:
+            // NOP : array already contains wished datas
+            break;
+        case ARRAY_ALL_FREQ:  // add to array complemented set
+        case ARRAY_NULL_FREQ: // build array from set
+        {
+            int32_t i, size;
+
+            /* Ask lots of memory */
+            for (i = 0; i < size; i++) {
+                c = uset_charAt(set, i);
+                add_index_long(return_value, c, 0);
+            }
+
+            break;
+        }
+        case STRING_NULL_FREQ:    // as a set/class
+        case STRING_NONNULL_FREQ: // same remark
+        {
+            char *result;
+            int32_t result_len;
+            UChar *uresult = NULL;
+            int32_t uresult_len = 0;
+            UErrorCode status = U_ZERO_ERROR;
+
+            uresult_len = uset_toPattern(set, NULL, 0, TRUE, &status);
+            if (U_BUFFER_OVERFLOW_ERROR != status) {
+                RETVAL_FALSE;
+                break;
+            }
+            status = U_ZERO_ERROR;
+            uresult = emalloc((uresult_len + 1) * sizeof(*uresult));
+            /*uresult_len = */uset_toPattern(set, uresult, uresult_len, TRUE, &status);
+            if (U_FAILURE(status)) {
+                efree(uresult);
+                RETVAL_FALSE;
+                break;
+            }
+            intl_convert_utf16_to_utf8(&result, &result_len, uresult, uresult_len, &status);
+            if (U_FAILURE(status)) {
+                efree(uresult);
+                RETVAL_FALSE;
+                break;
+            }
+            efree(uresult);
+            RETVAL_STRINGL(result, result_len, FALSE);
+            break;
+        }
+    }
+
+    uset_close(set);
 }
 
-PHP_FUNCTION(utf8_strlen) // arg: string
+PHP_FUNCTION(utf8_sub)
+{
+    char *string = NULL;
+    int string_len = 0;
+    long cp_length = 0, cp_start = 0;
+    long cu_end = 0, cu_from = 0;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl|l", &string, &string_len, &cp_start, &cp_length) == FAILURE) {
+        return;
+    }
+
+    if (cp_start > 0) {
+        U8_FWD_N(string, cu_from, string_len, cp_start);
+    } else if (cp_start < 0) {
+        cu_from = string_len;
+        U8_BACK_N(string, 0, cu_from, -cp_start);
+    }
+    if (ZEND_NUM_ARGS() <= 2) {
+        cu_end = string_len;
+    } else {
+        if (cp_length > 0) {
+            cu_end = cu_from;
+            U8_FWD_N(string, cu_end, string_len, cp_length);
+        } else if (cp_length < 0) {
+            cu_end = string_len;
+            U8_BACK_N(string, 0, cu_end, -cp_length);
+        }
+    }
+
+    if (cu_end > cu_from) {
+        RETURN_STRINGL(string + cu_from, cu_end - cu_from, TRUE);
+    } else {
+        RETURN_EMPTY_STRING();
+    }
+}
+
+PHP_FUNCTION(utf8_len)
 {
     char *string = NULL;
     int string_len = 0;
@@ -87,16 +260,6 @@ end:
     if (NULL != ustring) {
         efree(ustring);
     }
-}
-
-PHP_FUNCTION(utf8_substr)
-{
-    //
-}
-
-PHP_FUNCTION(utf8_strpos)
-{
-    //
 }
 
 PHP_FUNCTION(utf8_ord)
@@ -131,7 +294,7 @@ end:
     }
 }
 
-PHP_FUNCTION(utf8_str_word_count) // args: string, locale, format
+PHP_FUNCTION(utf8_word_count)
 {
     enum {
         COUNT_ONLY    = 0,
@@ -212,7 +375,7 @@ PHP_FUNCTION(utf8_chr)
 {
     long cp;
     char *s;
-    int32_t i, s_len;
+    int32_t s_len, i = 0;
     UBool isError = FALSE;
 
     if (1 != ZEND_NUM_ARGS()) {
@@ -229,7 +392,7 @@ PHP_FUNCTION(utf8_chr)
     RETURN_STRINGL(s, s_len, FALSE);
 }
 
-typedef int32_t *(func_full_case_mapping_t)(UChar *dest, int32_t destCapacity, const UChar *src, int32_t srcLength, const char *locale, UErrorCode *status);
+typedef int32_t (*func_full_case_mapping_t)(UChar *dest, int32_t destCapacity, const UChar *src, int32_t srcLength, const char *locale, UErrorCode *status);
 
 static int32_t u_strToTitleWithoutBI(UChar *dest, int32_t destCapacity, const UChar *src, int32_t srcLength, const char *locale, UErrorCode *status)
 {
@@ -281,17 +444,17 @@ end:
     }
 }
 
-PHP_FUNCTION(utf8_strtoupper)
+PHP_FUNCTION(utf8_toupper)
 {
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToUpper);
 }
 
-PHP_FUNCTION(utf8_strtolower)
+PHP_FUNCTION(utf8_tolower)
 {
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToLower);
 }
 
-PHP_FUNCTION(utf8_strtotitle)
+PHP_FUNCTION(utf8_totitle)
 {
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToTitleWithoutBI);
 }
@@ -308,7 +471,7 @@ PHP_FUNCTION(utf8_strtotitle)
 // strncasecmp, strncmp : rewrite (2 versions : with case folding and full/locale?)
 // str*pos : rewrite (for offsets and case insensitivity)
 // strtr : rewrite
-// substr, substr_compare, substr_replace : rewrite (offsets)
+// substr_compare, substr_replace : rewrite (offsets)
 // ucfirst, lcfirst : <no sense>
 // wordwrap : ?
 // str_shuffle : ?
