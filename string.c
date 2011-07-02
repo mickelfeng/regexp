@@ -229,13 +229,14 @@ PHP_FUNCTION(utf8_chr)
     RETURN_STRINGL(s, s_len, FALSE);
 }
 
-enum {
-    LOWER,
-    UPPER,
-    TITLE
-};
+typedef int32_t *(func_full_case_mapping_t)(UChar *dest, int32_t destCapacity, const UChar *src, int32_t srcLength, const char *locale, UErrorCode *status);
 
-static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, int type)
+static int32_t u_strToTitleWithoutBI(UChar *dest, int32_t destCapacity, const UChar *src, int32_t srcLength, const char *locale, UErrorCode *status)
+{
+    return u_strToTitle(dest, destCapacity, src, srcLength, NULL, locale, status);
+}
+
+static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, func_full_case_mapping_t func)
 {
     UErrorCode status = U_ZERO_ERROR;
     int locale_len = 0;
@@ -262,13 +263,7 @@ static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, int type)
     do { /* Iteration needed: string may be longer than original ! */
         uresult_size = ++tries * ustring_len + 1;
         uresult = erealloc(uresult, uresult_size * sizeof(*uresult));
-        if (TITLE == type) {
-            uresult_len = u_strToTitle(uresult, uresult_size, ustring, ustring_len, NULL, locale, &status);
-        } else if (UPPER == type) {
-            uresult_len = u_strToUpper(uresult, uresult_size, ustring, ustring_len, locale, &status);
-        } else /*if (LOWER == type)*/ {
-            uresult_len = u_strToLower(uresult, uresult_size, ustring, ustring_len, locale, &status);
-        }
+        uresult_len = func(uresult, uresult_size, ustring, ustring_len, locale, &status);
         if (U_SUCCESS(status)) {
             break;
         }
@@ -288,17 +283,17 @@ end:
 
 PHP_FUNCTION(utf8_strtoupper)
 {
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, UPPER);
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToUpper);
 }
 
 PHP_FUNCTION(utf8_strtolower)
 {
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, LOWER);
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToLower);
 }
 
 PHP_FUNCTION(utf8_strtotitle)
 {
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, TITLE);
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToTitleWithoutBI);
 }
 
 // explode : same
