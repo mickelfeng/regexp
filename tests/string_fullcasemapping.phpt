@@ -4,6 +4,8 @@ Test utf8_to[title|upper|lower] function
 <?php if (!extension_loaded('intl')) echo 'skip'; ?>
 --FILE--
 <?php
+ini_set('intl.error_level', E_WARNING);
+
 $functions = array('totitle', 'toupper', 'tolower');
 define('INITIAL_VALUE', 'içmek');
 $locales = array(
@@ -22,6 +24,14 @@ foreach ($locales as $l => $a) {
     $word = INITIAL_VALUE;
     foreach ($functions as $f) {
         $word = call_user_func('utf8_' . $f, $word);
+        echo $word === $a[$f] ? 'OK' : 'FAILED', "\n";
+    }
+}
+echo "#####\n";
+foreach ($locales as $l => $a) {
+    $word = INITIAL_VALUE;
+    foreach ($functions as $f) {
+        $word = call_user_func('utf8_' . $f, $word, $l);
         echo $word === $a[$f] ? 'OK' : 'FAILED', "\n";
     }
 }
@@ -45,6 +55,13 @@ NULL
 
 Warning: utf8_tolower() expects at most 2 parameters, 3 given in %s on line %d
 NULL
+#####
+OK
+OK
+OK
+OK
+OK
+OK
 #####
 OK
 OK

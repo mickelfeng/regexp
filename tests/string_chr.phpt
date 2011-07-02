@@ -4,6 +4,8 @@ Test utf8_chr function
 <?php if (!extension_loaded('intl')) echo 'skip'; ?>
 --FILE--
 <?php
+ini_set('intl.error_level', E_WARNING);
+
 $A="\xF0\x9D\x98\xBC"; # 1D63C, Lu
 
 var_dump(utf8_chr());

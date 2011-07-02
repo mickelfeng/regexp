@@ -4,6 +4,8 @@ Test utf8_sub function
 <?php if (!extension_loaded('intl')) echo 'skip'; ?>
 --FILE--
 <?php
+ini_set('intl.error_level', E_WARNING);
+
 define('OK', 'OK');
 define('FAILED', 'FAILED');
 

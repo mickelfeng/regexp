@@ -4,6 +4,8 @@ Test utf8_split function
 <?php if (!extension_loaded('intl')) echo 'skip'; ?>
 --FILE--
 <?php
+ini_set('intl.error_level', E_WARNING);
+
 $A="\xF0\x9D\x98\xBC"; # 1D63C, Lu
 $B="\xF0\x9D\x98\xBD";
 $C="\xF0\x9D\x98\xBE";
