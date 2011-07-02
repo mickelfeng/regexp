@@ -78,10 +78,11 @@ PHP_FUNCTION(utf8_split)
     long length = 1;
     int32_t last = 0, cu_offset = 0;
 
-    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &string, &string_len, &length)) {
-        RETURN_FALSE;
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &string, &string_len, &length)) {
+        return;
     }
     if (length < 1) {
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "The length of each segment must be greater than zero");
         RETURN_FALSE;
     }
     array_init(return_value);
@@ -92,7 +93,7 @@ PHP_FUNCTION(utf8_split)
     }
 }
 
-PHP_FUNCTION(utf8_count_chars)
+PHP_FUNCTION(utf8_count_chars) // not tested
 {
     enum {
         ARRAY_ALL_FREQ      = 0,
@@ -247,11 +248,8 @@ PHP_FUNCTION(utf8_len)
     UErrorCode status = U_ZERO_ERROR;
 
     intl_error_reset(NULL TSRMLS_CC);
-    if (1 != ZEND_NUM_ARGS()) {
-        WRONG_PARAM_COUNT;
-    }
-    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "s", &string, &string_len)) {
-        RETURN_LONG(0);
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &string, &string_len)) {
+        return;
     }
     UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
     RETVAL_LONG((long) u_countChar32(ustring, ustring_len));
@@ -274,11 +272,8 @@ PHP_FUNCTION(utf8_ord)
     UErrorCode status = U_ZERO_ERROR;
 
     intl_error_reset(NULL TSRMLS_CC);
-    if (2 != ZEND_NUM_ARGS()) {
-        WRONG_PARAM_COUNT;
-    }
-    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "sl", &string, &string_len, &cp_offset)) {
-        RETURN_FALSE;
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl", &string, &string_len, &cp_offset)) {
+        return;
     }
     UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
     UTF16_CP_TO_CU(ustring, ustring_len, cp_offset, cu_offset);
@@ -294,7 +289,7 @@ end:
     }
 }
 
-PHP_FUNCTION(utf8_word_count)
+PHP_FUNCTION(utf8_word_count) // not tested
 {
     enum {
         COUNT_ONLY    = 0,
@@ -378,11 +373,8 @@ PHP_FUNCTION(utf8_chr)
     int32_t s_len, i = 0;
     UBool isError = FALSE;
 
-    if (1 != ZEND_NUM_ARGS()) {
-        WRONG_PARAM_COUNT;
-    }
-    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "l", &cp)) {
-        cp = 0;
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &cp)) {
+        return;
     }
     s_len = U8_LENGTH(cp);
     s = emalloc((s_len + 1) * sizeof(*s));
@@ -417,7 +409,7 @@ static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, func_full_case_mapping
 
     intl_error_reset(NULL TSRMLS_CC);
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|s", &string, &string_len, &locale, &locale_len)) {
-        RETURN_FALSE;
+        return;
     }
     if (0 == locale_len) {
         locale = INTL_G(default_locale);
@@ -459,17 +451,18 @@ PHP_FUNCTION(utf8_totitle)
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToTitleWithoutBI);
 }
 
+// ltrim, rtrim, trim : rewrite
+// strchr/strstr : rewrite (offsets)
+// str*pos : rewrite (for offsets and case insensitivity)
+
 // explode : same
 // *printf : rewrite
 // implode, join : same
-// ltrim, rtrim, trim : rewrite
 // str_replace : same
 // str_ireplace : rewrite
-// strchr/strstr : rewrite (offsets)
 // strichr/stripos : rewrite
 // strnatcasecmp, strnatcmp : use collations?
 // strncasecmp, strncmp : rewrite (2 versions : with case folding and full/locale?)
-// str*pos : rewrite (for offsets and case insensitivity)
 // strtr : rewrite
 // substr_compare, substr_replace : rewrite (offsets)
 // ucfirst, lcfirst : <no sense>
