@@ -18,21 +18,21 @@ foreach ($functions as $f) {
     var_dump($f());
     var_dump($f(INITIAL_VALUE, 'en', 3));
 }
-echo "#####\n";
+echo "##### Default locale #####\n";
 foreach ($locales as $l => $a) {
     ini_set('intl.default_locale', $l);
     $word = INITIAL_VALUE;
     foreach ($functions as $f) {
         $word = call_user_func('utf8_' . $f, $word);
-        echo $word === $a[$f] ? 'OK' : 'FAILED', "\n";
+        echo $word === $a[$f] ? 'OK' : 'FAILED', ' (', $l, ' => ', $f, ')', "\n";
     }
 }
-echo "#####\n";
+echo "##### Explicit locale #####\n";
 foreach ($locales as $l => $a) {
     $word = INITIAL_VALUE;
     foreach ($functions as $f) {
         $word = call_user_func('utf8_' . $f, $word, $l);
-        echo $word === $a[$f] ? 'OK' : 'FAILED', "\n";
+        echo $word === $a[$f] ? 'OK' : 'FAILED', ' (', $l, ' => ', $f, ')', "\n";
     }
 }
 ?>
@@ -55,17 +55,17 @@ NULL
 
 Warning: utf8_tolower() expects at most 2 parameters, 3 given in %s on line %d
 NULL
-#####
-OK
-OK
-OK
-OK
-OK
-OK
-#####
-OK
-OK
-OK
-OK
-OK
-OK
+##### Default locale #####
+OK (fr => totitle)
+OK (fr => toupper)
+OK (fr => tolower)
+OK (tr => totitle)
+OK (tr => toupper)
+OK (tr => tolower)
+##### Explicit locale #####
+OK (fr => totitle)
+OK (fr => toupper)
+OK (fr => tolower)
+OK (tr => totitle)
+OK (tr => toupper)
+OK (tr => tolower)
