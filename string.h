@@ -5,6 +5,7 @@
 PHP_FUNCTION(utf8_len);
 PHP_FUNCTION(utf8_chr);
 PHP_FUNCTION(utf8_ord);
+PHP_FUNCTION(utf8_reverse);
 
 PHP_FUNCTION(utf8_word_count);
 PHP_FUNCTION(utf8_count_chars);

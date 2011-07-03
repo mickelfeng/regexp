@@ -17,6 +17,16 @@
 # else
 #  define DIRECTORY_SEPARATOR '/'
 # endif /* ZEND_WIN32 */
+static const char *ubasename(const char *filename)
+{
+    const char *c;
+
+    if (NULL == (c = strrchr(filename, DIRECTORY_SEPARATOR))) {
+        return filename;
+    } else {
+        return c + 1;
+    }
+}
 
 # define debug(format, ...) \
     zend_output_debug_string(0, "%s:%d:" format " in %s()\n", ubasename(__FILE__), __LINE__, ## __VA_ARGS__, __func__)
@@ -69,7 +79,6 @@
             }                                                                                                 \
         }                                                                                                     \
     } while (0);
-
 
 PHP_FUNCTION(utf8_split)
 {
@@ -260,13 +269,19 @@ end:
     }
 }
 
+/**
+ * TODO:
+ * - tests : cp offset < 0 and out of bounds (on positive and negative index)
+ **/
 PHP_FUNCTION(utf8_ord)
 {
     UChar32 c = 0;
     char *string = NULL;
     int string_len = 0;
+#ifdef UTF16_AS_INTERNAL
     UChar *ustring = NULL;
     int32_t ustring_len = 0;
+#endif /* UTF16_AS_INTERNAL */
     long cp_offset = 0;
     int32_t cu_offset = 0;
     UErrorCode status = U_ZERO_ERROR;
@@ -275,11 +290,22 @@ PHP_FUNCTION(utf8_ord)
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl", &string, &string_len, &cp_offset)) {
         return;
     }
+#ifdef UTF16_AS_INTERNAL
     UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
     UTF16_CP_TO_CU(ustring, ustring_len, cp_offset, cu_offset);
     U16_NEXT(ustring, cu_offset, ustring_len, c);
+#else
+    if (cp_offset < 0) {
+        cu_offset = string_len;
+        U8_BACK_N(string, 0, cu_offset, -cp_offset);
+    } else {
+        U8_FWD_N(string, cu_offset, string_len, cp_offset);
+    }
+    U8_NEXT(string, cu_offset, string_len, c);
+#endif /* UTF16_AS_INTERNAL */
     RETVAL_LONG((long) c);
 
+#ifdef UTF16_AS_INTERNAL
     if (FALSE) {
 end:
         RETVAL_LONG(0);
@@ -287,6 +313,7 @@ end:
     if (NULL != ustring) {
         efree(ustring);
     }
+#endif /* UTF16_AS_INTERNAL */
 }
 
 PHP_FUNCTION(utf8_word_count) // not tested
@@ -451,6 +478,45 @@ PHP_FUNCTION(utf8_totitle)
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToTitleWithoutBI);
 }
 
+PHP_FUNCTION(utf8_quickcasecmp)
+{
+    // u_strcasecmp
+}
+
+PHP_FUNCTION(utf8_quickncasecmp)
+{
+    // u_strncasecmp
+}
+
+PHP_FUNCTION(utf8_strncmp)
+{
+    //
+}
+
+PHP_FUNCTION(utf8_reverse) // not tested
+{
+    char *string = NULL;
+    int string_len = 0;
+    char *result, *r;
+    int32_t last, cu_offset;
+
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &string, &string_len)) {
+        return;
+    }
+    result = emalloc((string_len + 1) * sizeof(*result));
+    last = cu_offset = string_len;
+    r = result;
+    while (cu_offset > 0) {
+        U8_BACK_1(string, 0, cu_offset);
+        memcpy(r, string + cu_offset, last - cu_offset);
+        r += last - cu_offset;
+        last = cu_offset;
+    }
+    result[string_len] = '\0';
+
+    RETVAL_STRINGL(result, string_len, FALSE);
+}
+
 // ltrim, rtrim, trim : rewrite
 // strchr/strstr : rewrite (offsets)
 // str*pos : rewrite (for offsets and case insensitivity)
@@ -462,10 +528,12 @@ PHP_FUNCTION(utf8_totitle)
 // str_ireplace : rewrite
 // strichr/stripos : rewrite
 // strnatcasecmp, strnatcmp : use collations?
-// strncasecmp, strncmp : rewrite (2 versions : with case folding and full/locale?)
+// strncasecmp, strcasecmp : rewrite (2 versions : with case folding and full/locale?)
+// strncmp : rewrite (offsets)
+// strcmp : same
 // strtr : rewrite
 // substr_compare, substr_replace : rewrite (offsets)
-// ucfirst, lcfirst : <no sense>
+// ucfirst, lcfirst : no sense ?
 // wordwrap : ?
 // str_shuffle : ?
 // str_repeat : same

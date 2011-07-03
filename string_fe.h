@@ -1,6 +1,7 @@
     PHP_FE(utf8_chr, arginfo_chr)
     PHP_FE(utf8_ord, arginfo_string)
     PHP_FE(utf8_len, arginfo_string)
+    PHP_FE(utf8_reverse, arginfo_string)
 
     PHP_FE(utf8_word_count, arginfo_word_count)
     PHP_FE(utf8_count_chars, arginfo_count_chars)
