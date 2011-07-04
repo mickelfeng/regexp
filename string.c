@@ -297,10 +297,6 @@ end:
 #endif /* UTF16_AS_INTERNAL */
 }
 
-/**
- * TODO:
- * - result is wrong with a negative out of bounds index
- **/
 PHP_FUNCTION(utf8_ord)
 {
     UChar32 c = 0;
@@ -325,12 +321,6 @@ PHP_FUNCTION(utf8_ord)
     UTF16_CP_TO_CU(ustring, ustring_len, cp_offset, cu_offset);
     U16_NEXT(ustring, cu_offset, ustring_len, c);
 #else
-    /*if (cp_offset < 0) {
-        cu_offset = string_len;
-        U8_BACK_N(string, 0, cu_offset, -cp_offset);
-    } else {
-        U8_FWD_N(string, cu_offset, string_len, cp_offset);
-    }*/
     UTF8_CP_TO_CU(string, string_len, cp_offset, cu_offset);
     U8_NEXT(string, cu_offset, string_len, c);
 #endif /* UTF16_AS_INTERNAL */
@@ -524,7 +514,7 @@ PHP_FUNCTION(utf8_strncmp)
     //
 }
 
-PHP_FUNCTION(utf8_reverse) // not tested
+PHP_FUNCTION(utf8_reverse)
 {
     char *string = NULL;
     int string_len = 0;
