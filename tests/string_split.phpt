@@ -28,7 +28,7 @@ Warning: utf8_split() expects at least 1 parameter, 0 given in %s on line %d
 NULL
 
 
-Warning: utf8_split(): The length of each segment must be greater than zero in %s on line %d
+Warning: utf8_split(): Length of each segment must be greater than zero in %s on line %d
 bool(false)
 
 

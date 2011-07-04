@@ -13,6 +13,8 @@ PHP_FUNCTION(utf8_split);
 PHP_FUNCTION(utf8_sub);
 
 PHP_FUNCTION(utf8_ncmp);
+PHP_FUNCTION(utf8_ncasecmp);
+PHP_FUNCTION(utf8_casecmp);
 
 PHP_FUNCTION(utf8_toupper);
 PHP_FUNCTION(utf8_tolower);

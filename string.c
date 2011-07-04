@@ -113,7 +113,7 @@ PHP_FUNCTION(utf8_split)
         return;
     }
     if (length < 1) {
-        php_error_docref(NULL TSRMLS_CC, E_WARNING, "The length of each segment must be greater than zero");
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "Length of each segment must be greater than zero");
         RETURN_FALSE;
     }
     array_init(return_value);
@@ -499,14 +499,69 @@ PHP_FUNCTION(utf8_totitle)
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToTitleWithoutBI);
 }
 
-PHP_FUNCTION(utf8_quickcasecmp)
+static void ncasecmp(INTERNAL_FUNCTION_PARAMETERS, int ncmpbehave)
 {
-    // u_strcasecmp
+    UErrorCode status = U_ZERO_ERROR;
+    char *string1 = NULL;
+    int string1_len = 0;
+    char *string2 = NULL;
+    int string2_len = 0;
+    long cp_length = 0;
+    UChar *ustring1 = NULL;
+    int32_t ustring1_len = 0;
+    UChar *ustring2 = NULL;
+    int32_t ustring2_len = 0;
+
+    intl_error_reset(NULL TSRMLS_CC);
+    if (ncmpbehave) {
+        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl", &string1, &string1_len, &string2, &string2_len, &cp_length)) {
+            return;
+        }
+    } else {
+        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &string1, &string1_len, &string2, &string2_len)) {
+            return;
+        }
+    }
+    UTF8_TO_UTF16(status, ustring1, ustring1_len, string1, string1_len);
+    UTF8_TO_UTF16(status, ustring2, ustring2_len, string2, string2_len);
+    if (ncmpbehave) {
+        int32_t cu_length = 0;
+        UChar *uref;
+        int32_t uref_len;
+
+        if (u_countChar32(ustring1, ustring1_len) >= u_countChar32(ustring2, ustring2_len)) {
+            uref = ustring1;
+            uref_len = ustring1_len;
+        } else {
+            uref = ustring2;
+            uref_len = ustring2_len;
+        }
+        U16_FWD_N(uref, cu_length, uref_len, cp_length);
+        ustring1_len = MIN(ustring1_len, cu_length);
+        ustring2_len = MIN(ustring2_len, cu_length);
+    }
+    RETVAL_LONG((long) u_strCaseCompare(ustring1, ustring1_len, ustring2, ustring2_len, 0, &status));
+
+    if (FALSE) {
+end:
+        RETVAL_FALSE;
+    }
+    if (NULL != ustring1) {
+        efree(ustring1);
+    }
+    if (NULL != ustring2) {
+        efree(ustring2);
+    }
 }
 
-PHP_FUNCTION(utf8_quickncasecmp)
+PHP_FUNCTION(utf8_casecmp) // not tested
 {
-    // u_strncasecmp
+    ncasecmp(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE);
+}
+
+PHP_FUNCTION(utf8_ncasecmp) // not tested
+{
+    ncasecmp(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE);
 }
 
 PHP_FUNCTION(utf8_ncmp)
@@ -527,15 +582,15 @@ PHP_FUNCTION(utf8_ncmp)
         php_error_docref(NULL TSRMLS_CC, E_WARNING, "Length must be greater than or equal to 0");
         RETURN_FALSE;
     }
-    if (string1_len >= string2_len) {
+    /* result were wrong if the shorter string (in CP) was used as reference */
+    if (u8_countChar32(string1, string1_len) >= u8_countChar32(string2, string2_len)) {
         ref = string1;
         ref_len = string1_len;
     } else {
         ref = string2;
         ref_len = string2_len;
     }
-    /* result were wrong if the shorter string were used
-       if length (in CP) is lesser than cp_length, there is no matter : macro iteration will be stopped */
+    /* if length (in CP) is lesser than cp_length, there is no matter : ICU macro's iteration will be stopped */
     U8_FWD_N(ref, cu_length, ref_len, cp_length);
     RETURN_LONG(zend_binary_strncmp(string1, string1_len, string2, string2_len, cu_length));
 }
@@ -572,12 +627,12 @@ PHP_FUNCTION(utf8_reverse)
 // *printf : rewrite
 // implode, join : same
 // str_replace : same
+// strcmp : same
+
 // str_ireplace : rewrite
 // strichr/stripos : rewrite
 // strnatcasecmp, strnatcmp : use collations?
 // strncasecmp, strcasecmp : rewrite (2 versions : with case folding and full/locale?)
-// strncmp : rewrite (offsets)
-// strcmp : same
 // strtr : rewrite
 // substr_compare, substr_replace : rewrite (offsets)
 // ucfirst, lcfirst : no sense ?
