@@ -5,6 +5,7 @@
 #include "php_intl.h"
 #include "intl_data.h"
 #include "intl_convert.h"
+#include "utf8.h"
 #include "string.h"
 
 #include <unicode/ubrk.h>
@@ -76,6 +77,27 @@ static const char *ubasename(const char *filename)
                     goto end;                                                                                 \
                 }                                                                                             \
                 U16_FWD_N(ustring, cu_offset, ustring_len, cp_offset);                                        \
+            }                                                                                                 \
+        }                                                                                                     \
+    } while (0);
+
+#define UTF8_CP_TO_CU(string, string_len, cp_offset, cu_offset)                                               \
+    do {                                                                                                      \
+        if (0 != cp_offset) {                                                                                 \
+            int32_t count_cp = u8_countChar32(string, string_len);                                            \
+            if (cp_offset < 0) {                                                                              \
+                if (cp_offset < -count_cp) {                                                                  \
+                    intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
+                    goto end;                                                                                 \
+                }                                                                                             \
+                cu_offset = string_len;                                                                       \
+                U8_BACK_N(string, 0, cu_offset, -cp_offset);                                                  \
+            } else {                                                                                          \
+                if (cp_offset >= count_cp) {                                                                  \
+                    intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
+                    goto end;                                                                                 \
+                }                                                                                             \
+                U8_FWD_N(string, cu_offset, string_len, cp_offset);                                           \
             }                                                                                                 \
         }                                                                                                     \
     } while (0);
@@ -252,14 +274,17 @@ PHP_FUNCTION(utf8_len)
 {
     char *string = NULL;
     int string_len = 0;
+#ifdef UTF16_AS_INTERNAL
     UChar *ustring = NULL;
     int32_t ustring_len = 0;
     UErrorCode status = U_ZERO_ERROR;
 
     intl_error_reset(NULL TSRMLS_CC);
+#endif /* UTF16_AS_INTERNAL */
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &string, &string_len)) {
         return;
     }
+#ifdef UTF16_AS_INTERNAL
     UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
     RETVAL_LONG((long) u_countChar32(ustring, ustring_len));
 
@@ -267,11 +292,14 @@ end:
     if (NULL != ustring) {
         efree(ustring);
     }
+#else
+    RETVAL_LONG((long) u8_countChar32(string, string_len));
+#endif /* UTF16_AS_INTERNAL */
 }
 
 /**
  * TODO:
- * - tests : cp offset < 0 and out of bounds (on positive and negative index)
+ * - result is wrong with a negative out of bounds index
  **/
 PHP_FUNCTION(utf8_ord)
 {
@@ -284,7 +312,9 @@ PHP_FUNCTION(utf8_ord)
 #endif /* UTF16_AS_INTERNAL */
     long cp_offset = 0;
     int32_t cu_offset = 0;
+#ifdef UTF16_AS_INTERNAL
     UErrorCode status = U_ZERO_ERROR;
+#endif /* UTF16_AS_INTERNAL */
 
     intl_error_reset(NULL TSRMLS_CC);
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl", &string, &string_len, &cp_offset)) {
@@ -295,21 +325,22 @@ PHP_FUNCTION(utf8_ord)
     UTF16_CP_TO_CU(ustring, ustring_len, cp_offset, cu_offset);
     U16_NEXT(ustring, cu_offset, ustring_len, c);
 #else
-    if (cp_offset < 0) {
+    /*if (cp_offset < 0) {
         cu_offset = string_len;
         U8_BACK_N(string, 0, cu_offset, -cp_offset);
     } else {
         U8_FWD_N(string, cu_offset, string_len, cp_offset);
-    }
+    }*/
+    UTF8_CP_TO_CU(string, string_len, cp_offset, cu_offset);
     U8_NEXT(string, cu_offset, string_len, c);
 #endif /* UTF16_AS_INTERNAL */
     RETVAL_LONG((long) c);
 
-#ifdef UTF16_AS_INTERNAL
     if (FALSE) {
 end:
         RETVAL_LONG(0);
     }
+#ifdef UTF16_AS_INTERNAL
     if (NULL != ustring) {
         efree(ustring);
     }
