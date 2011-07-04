@@ -509,9 +509,35 @@ PHP_FUNCTION(utf8_quickncasecmp)
     // u_strncasecmp
 }
 
-PHP_FUNCTION(utf8_strncmp)
+PHP_FUNCTION(utf8_ncmp)
 {
-    //
+    char *string1 = NULL;
+    int string1_len = 0;
+    char *string2 = NULL;
+    int string2_len = 0;
+    long cp_length = 0;
+    int32_t cu_length = 0;
+    char *ref;
+    int32_t ref_len;
+
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl", &string1, &string1_len, &string2, &string2_len, &cp_length)) {
+        return;
+    }
+    if (cp_length < 0) {
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "Length must be greater than or equal to 0");
+        RETURN_FALSE;
+    }
+    if (string1_len >= string2_len) {
+        ref = string1;
+        ref_len = string1_len;
+    } else {
+        ref = string2;
+        ref_len = string2_len;
+    }
+    /* result were wrong if the shorter string were used
+       if length (in CP) is lesser than cp_length, there is no matter : macro iteration will be stopped */
+    U8_FWD_N(ref, cu_length, ref_len, cp_length);
+    RETURN_LONG(zend_binary_strncmp(string1, string1_len, string2, string2_len, cu_length));
 }
 
 PHP_FUNCTION(utf8_reverse)

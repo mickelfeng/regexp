@@ -12,6 +12,8 @@ PHP_FUNCTION(utf8_count_chars);
 PHP_FUNCTION(utf8_split);
 PHP_FUNCTION(utf8_sub);
 
+PHP_FUNCTION(utf8_ncmp);
+
 PHP_FUNCTION(utf8_toupper);
 PHP_FUNCTION(utf8_tolower);
 PHP_FUNCTION(utf8_totitle);

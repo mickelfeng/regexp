@@ -7,6 +7,7 @@
     PHP_FE(utf8_count_chars, arginfo_count_chars)
     PHP_FE(utf8_split, arginfo_split)
     PHP_FE(utf8_sub, arginfo_sub)
+    PHP_FE(utf8_ncmp, arginfo_ncmp)
 
     PHP_FE(utf8_toupper, arginfo_fullcasemapping)
     PHP_FE(utf8_totitle, arginfo_fullcasemapping)
