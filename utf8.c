@@ -1,4 +1,13 @@
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
+
+#include <php.h>
+#include "php_intl.h"
+#include "intl_error.h"
 #include <unicode/utf8.h>
+#include "unicode.h"
+#include "utf16.h"
 #include "utf8.h"
 
 int32_t u8_countChar32(const uint8_t *string, int32_t length)
@@ -22,4 +31,64 @@ int32_t u8_countChar32(const uint8_t *string, int32_t length)
     }
 
     return cpcount;
+}
+
+int utf8_cp_to_cu(const char *string, int string_len, long cp_offset, int32_t *cu_offset TSRMLS_DC)
+{
+    if (0 != cp_offset) {
+        int32_t _cp_count = u8_countChar32(string, string_len);
+        if (cp_offset < 0) {
+            if (cp_offset < -_cp_count) {
+                intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC);
+                return FAILURE;
+            }
+            *cu_offset = string_len;
+            U8_BACK_N(string, 0, *cu_offset, -cp_offset);
+        } else {
+            if (cp_offset >= _cp_count) {
+                intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC);
+                return FAILURE;
+            }
+            U8_FWD_N(string, *cu_offset, string_len, cp_offset);
+        }
+    }
+
+    return SUCCESS;
+}
+
+void utf8_foldcase(UChar **target, int32_t *target_len, const char *src, int src_len, UErrorCode *status)
+{
+    // 1. utf8 => utf16
+    // 2. utf16 => utf16 case folded
+    // 3. efree(intermediate utf16)
+}
+
+void utf8_add_cp_replacement(HashTable *ht, UChar32 cp_from, const char *cu_to, int32_t cu_to_len)
+{
+    U8ReplacementCharData *tmp;
+
+    if (SUCCESS == zend_hash_index_find(ht, cp_from, (void **) &tmp)) {
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "multiple replacements for %d", cp_from);
+        memcpy(tmp->cus, cu_to, cu_to_len);
+        tmp->cus[cu_to_len] = 0;
+        tmp->cus_length = cu_to_len;
+    } else {
+        U8ReplacementCharData nullu8rcd = { 0 };
+
+        tmp = &nullu8rcd;
+        memcpy(tmp->cus, cu_to, cu_to_len);
+        tmp->cus[cu_to_len] = 0;
+        tmp->cus_length = cu_to_len;
+        zend_hash_index_update(ht, cp_from, (void *) tmp, sizeof(*tmp), NULL);
+    }
+}
+
+void utf16_add_cp_replacement(HashTable *ht, UChar32 cp_from, UChar32 cp_to)
+{
+    //
+}
+
+void utf8_do_replacement(HashTable *ht, const char *from, int from_len, char **to, int *to_len)
+{
+    //
 }

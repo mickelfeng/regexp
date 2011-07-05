@@ -2,10 +2,13 @@
 # include "config.h"
 #endif /* HAVE_CONFIG_H */
 
+#include <php.h>
 #include "php_intl.h"
 #include "intl_data.h"
 #include "intl_convert.h"
+#include "unicode.h"
 #include "utf8.h"
+#include "utf16.h"
 #include "string.h"
 
 #include <unicode/ubrk.h>
@@ -190,6 +193,7 @@ PHP_FUNCTION(utf8_count_chars) // not tested
             int32_t i, size;
 
             /* Ask lots of memory */
+            size = uset_size(set);
             for (i = 0; i < size; i++) {
                 c = uset_charAt(set, i);
                 add_index_long(return_value, c, 0);
@@ -337,7 +341,7 @@ end:
 #endif /* UTF16_AS_INTERNAL */
 }
 
-PHP_FUNCTION(utf8_word_count) // not tested
+PHP_FUNCTION(utf8_word_count) // TODO: tests
 {
     enum {
         COUNT_ONLY    = 0,
@@ -554,12 +558,12 @@ end:
     }
 }
 
-PHP_FUNCTION(utf8_casecmp) // not tested
+PHP_FUNCTION(utf8_casecmp) // TODO: tests
 {
     ncasecmp(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE);
 }
 
-PHP_FUNCTION(utf8_ncasecmp) // not tested
+PHP_FUNCTION(utf8_ncasecmp) // TODO: tests
 {
     ncasecmp(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE);
 }
@@ -618,6 +622,136 @@ PHP_FUNCTION(utf8_reverse)
 
     RETVAL_STRINGL(result, string_len, FALSE);
 }
+
+static void findFirst_CaseSensitive(INTERNAL_FUNCTION_PARAMETERS, int want_only_pos)
+{
+    char *haystack = NULL;
+    int haystack_len = 0;
+    zval *needle = NULL;
+    zend_bool before = FALSE;
+    long start_cp = 0;
+    int32_t start_cu = 0;
+    char *found = NULL;
+
+    if (want_only_pos) {
+        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|l", &haystack, &haystack_len, &needle, &start_cp)) {
+            return;
+        }
+    } else {
+        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|lb", &haystack, &haystack_len, &needle, &start_cp, &before)) {
+            return;
+        }
+    }
+    UTF8_CP_TO_CU(haystack, haystack_len, start_cp, start_cu);
+    if (IS_STRING == Z_TYPE_P(needle)) {
+        if (!Z_STRLEN_P(needle)) {
+            php_error_docref(NULL TSRMLS_CC, E_WARNING, "Empty delimiter");
+            goto end;
+        }
+        found = php_memnstr(haystack + start_cu, Z_STRVAL_P(needle), Z_STRLEN_P(needle), haystack + haystack_len);
+    } else { // we search a code point (convert needle into long)
+        UChar32 c;
+        char cus[U8_MAX_LENGTH + 1] = { 0 };
+        char cus_length = 0;
+
+        if (SUCCESS != unicode_convert_needle_to_cp(needle, &c TSRMLS_CC)) {
+            goto end;
+        }
+        U8_APPEND_UNSAFE(cus, cus_length, c);
+        found = php_memnstr(haystack + start_cu, cus, cus_length, haystack + haystack_len);
+    }
+    if (NULL != found) {
+        if (want_only_pos) {
+            RETURN_LONG((long) u8_countChar32(haystack, found - haystack));
+        } else {
+            if (before) {
+                RETURN_STRINGL(haystack, found - haystack, 1);
+            } else {
+                RETURN_STRINGL(found, haystack_len - (found - haystack), 1);
+            }
+        }
+    }
+
+end:
+    if (want_only_pos) {
+        RETVAL_LONG((long) -1);
+    } else {
+        RETVAL_FALSE;
+    }
+}
+
+// TODO: rename firstpos/lastpos to firstIndex/lastIndex ?
+PHP_FUNCTION(utf8_firstsub) // TODO: tests
+{
+    findFirst_CaseSensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE);
+}
+
+PHP_FUNCTION(utf8_firstpos) // TODO: tests
+{
+    findFirst_CaseSensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE);
+}
+
+static void findLast_CaseSensitive(INTERNAL_FUNCTION_PARAMETERS, int want_only_pos)
+{
+    //
+}
+
+PHP_FUNCTION(utf8_lastsub)
+{
+    findLast_CaseSensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE);
+}
+
+PHP_FUNCTION(utf8_lastpos)
+{
+    findLast_CaseSensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE);
+}
+
+#include "../../standard/php_smart_str.h"
+
+PHP_FUNCTION(utf8_tr) // TODO: tests
+{
+    HashTable map;
+    char *string = NULL;
+    int string_len = 0;
+    char *from = NULL;
+    int from_len = 0;
+    char *to = NULL;
+    int to_len = 0;
+    smart_str result = { 0 };
+    UChar32 c;
+    int32_t f; // to iterate on from's CU/CP
+    int32_t t; // to iterate on to's CU/CP
+    int32_t s; // to iterate on string's CU/CP
+    int32_t p; // to keep start offset of the previous CP
+    U8ReplacementCharData *rep;
+
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss", &string, &string_len, &from, &from_len, &to, &to_len)) {
+        return;
+    }
+    zend_hash_init(&map, u8_countChar32(from, from_len), NULL, NULL, FALSE);
+    for (f = p = t = 0; f < from_len && t < to_len; /* NOP */) {
+        U8_NEXT(from, f, from_len, c);
+        U8_FWD_1(to, t, to_len);
+        utf8_add_cp_replacement(&map, c, to + p, t - p);
+        p = t;
+    }
+    for (s = p = 0; s < string_len; /* NOP */) {
+        U8_NEXT(string, s, string_len, c);
+
+        if (SUCCESS == zend_hash_index_find(&map, c, (void **) &rep)) {
+            smart_str_appendl(&result, rep->cus, rep->cus_length);
+        } else {
+            smart_str_appendl(&result, string + p, s - p);
+        }
+        p = s;
+    }
+    zend_hash_destroy(&map);
+
+    smart_str_0(&result);
+    RETVAL_STRINGL(result.c, result.len, 0);
+}
+
+// add: startswith, endswith (version cs and ci)
 
 // ltrim, rtrim, trim : rewrite
 // strchr/strstr : rewrite (offsets)

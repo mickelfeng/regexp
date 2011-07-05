@@ -11,6 +11,13 @@
     PHP_FE(utf8_ncmp, arginfo_ncmp)
     PHP_FE(utf8_ncasecmp, arginfo_ncmp)
 
+    PHP_FE(utf8_firstsub, arginfo_findsub)
+    PHP_FE(utf8_firstpos, arginfo_findpos)
+    PHP_FE(utf8_lastsub, arginfo_findsub)
+    PHP_FE(utf8_lastpos, arginfo_findpos)
+
+    PHP_FE(utf8_tr, arginfo_tr)
+
     PHP_FE(utf8_toupper, arginfo_fullcasemapping)
     PHP_FE(utf8_totitle, arginfo_fullcasemapping)
     PHP_FE(utf8_tolower, arginfo_fullcasemapping)
