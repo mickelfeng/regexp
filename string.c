@@ -554,10 +554,17 @@ static void ncasecmp(INTERNAL_FUNCTION_PARAMETERS, int ncmpbehave)
     char *string2 = NULL;
     int string2_len = 0;
     long cp_length = 0;
+#ifdef UTF16_AS_INTERNAL
     UChar *ustring1 = NULL;
     int32_t ustring1_len = 0;
     UChar *ustring2 = NULL;
     int32_t ustring2_len = 0;
+#else
+    char *tmp1 = NULL;
+    int32_t tmp1_len = 0;
+    char *tmp2 = NULL;
+    int32_t tmp2_len = 0;
+#endif /* UTF16_AS_INTERNAL */
 
     intl_error_reset(NULL TSRMLS_CC);
     if (ncmpbehave) {
@@ -569,6 +576,7 @@ static void ncasecmp(INTERNAL_FUNCTION_PARAMETERS, int ncmpbehave)
             return;
         }
     }
+#ifdef UTF16_AS_INTERNAL
     UTF8_TO_UTF16(status, ustring1, ustring1_len, string1, string1_len);
     UTF8_TO_UTF16(status, ustring2, ustring2_len, string2, string2_len);
     if (ncmpbehave) {
@@ -599,6 +607,40 @@ end:
     if (NULL != ustring2) {
         efree(ustring2);
     }
+#else
+    utf8_foldcase(&tmp1, &tmp1_len, string1, string1_len, &status);
+    CHECK_STATUS(status, "error on case folding string1");
+    utf8_foldcase(&tmp2, &tmp2_len, string2, string2_len, &status);
+    CHECK_STATUS(status, "error on case folding string2");
+    if (ncmpbehave) {
+        int32_t cu_length = 0;
+        char *ref;
+        int32_t ref_len;
+
+        if (u8_countChar32(string1, string1_len) >= u8_countChar32(string2, string2_len)) {
+            ref = string1;
+            ref_len = string1_len;
+        } else {
+            ref = string2;
+            ref_len = string2_len;
+        }
+        U8_FWD_N(ref, cu_length, ref_len, cp_length);
+        RETVAL_LONG(zend_binary_strncasecmp(tmp1, tmp1_len, tmp2, tmp2_len, cu_length));
+    } else {
+        RETVAL_LONG(zend_binary_strcasecmp(tmp1, tmp1_len, tmp2, tmp2_len));
+    }
+
+    if (FALSE) {
+end:
+        RETVAL_FALSE;
+    }
+    if (NULL != tmp1) {
+        efree(tmp1);
+    }
+    if (NULL != tmp2) {
+        efree(tmp2);
+    }
+#endif /* UTF16_AS_INTERNAL */
 }
 
 PHP_FUNCTION(utf8_casecmp) // TODO: tests
