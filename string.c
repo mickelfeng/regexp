@@ -738,7 +738,7 @@ PHP_FUNCTION(utf8_firstpos) // TODO: tests
     find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, TRUE);
 }
 
-PHP_FUNCTION(utf8_lastsub)
+PHP_FUNCTION(utf8_lastsub) // TODO: tests
 {
     find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, FALSE);
 }
@@ -746,6 +746,11 @@ PHP_FUNCTION(utf8_lastsub)
 PHP_FUNCTION(utf8_lastpos)
 {
     find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, TRUE);
+}
+
+static void find_case_insensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want_only_pos)
+{
+    // TODO
 }
 
 #include "../../standard/php_smart_str.h"
@@ -801,10 +806,68 @@ enum {
 
 static void trim(INTERNAL_FUNCTION_PARAMETERS, int mode)
 {
-    // si what, le compiler en une HashTable (associer le CP/UChar32 à rien)
-    // lors du parcours de la chaîne
-    // - avec what, supprimer ou non si présent ou non dans la HashTable
-    // - sans what, se baser sur u_whiteSpace
+    int32_t i, k;
+    UChar32 c = 0;
+    int32_t start = 0, end;
+    char *string = NULL;
+    int string_len = 0;
+    char *what = NULL;
+    int what_len = 0;
+    HashTable filter;
+
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|s", &string, &string_len, &what, &what_len)) {
+        return;
+    }
+    if (NULL != what) {
+        void *dummy = (void *) 1;
+
+        zend_hash_init(&filter, u8_countChar32(what, what_len), NULL, NULL, FALSE);
+        for (i = 0; i < what_len; /* NOP */) {
+            U8_NEXT(what, i, what_len, c);
+            zend_hash_index_update(&filter, c, &dummy, sizeof(void *), NULL);
+        }
+    }
+    end = string_len;
+    if (mode & TRIM_LEFT) {
+        for (i = k = 0 ; i < end ; /* NOP */) {
+            U8_NEXT(string, k, end, c);
+            if (NULL == what) {
+                if (FALSE == u_isWhitespace(c)) {
+                    break;
+                }
+            } else {
+                if (!zend_hash_index_exists(&filter, c)) {
+                    break;
+                }
+            }
+            i = k;
+        }
+        start = i;
+    }
+    if (mode & TRIM_RIGHT) {
+        for (i = k = end ; i > start ; /* NOP */) {
+            U8_PREV(string, 0, k, c);
+            if (NULL == what) {
+                if (FALSE == u_isWhitespace(c)) {
+                    break;
+                }
+            } else {
+                if (!zend_hash_index_exists(&filter, c)) {
+                    break;
+                }
+            }
+            i = k;
+        }
+        end = i;
+    }
+    if (NULL != what) {
+        zend_hash_destroy(&filter);
+    }
+    if (start < string_len) {
+        RETURN_STRINGL(string + start, end - start, 1);
+    } else {
+        RETURN_EMPTY_STRING();
+    }
 }
 
 PHP_FUNCTION(utf8_rtrim)
@@ -824,7 +887,6 @@ PHP_FUNCTION(utf8_trim)
 
 // add: startswith, endswith (version cs and ci)
 
-// ltrim, rtrim, trim : rewrite
 // stri[r?pos|r?chr] : rewrite
 
 // explode : same

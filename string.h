@@ -27,4 +27,8 @@ PHP_FUNCTION(utf8_lastpos);
 
 PHP_FUNCTION(utf8_tr);
 
+PHP_FUNCTION(utf8_trim);
+PHP_FUNCTION(utf8_rtrim);
+PHP_FUNCTION(utf8_ltrim);
+
 #endif /* !INTL_STRING_H */

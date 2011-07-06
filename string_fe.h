@@ -21,3 +21,7 @@
     PHP_FE(utf8_toupper, arginfo_fullcasemapping)
     PHP_FE(utf8_totitle, arginfo_fullcasemapping)
     PHP_FE(utf8_tolower, arginfo_fullcasemapping)
+
+    PHP_FE(utf8_trim, arginfo_trim)
+    PHP_FE(utf8_rtrim, arginfo_trim)
+    PHP_FE(utf8_ltrim, arginfo_trim)

@@ -62,3 +62,8 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_tr, 0, 0, 3)
     ZEND_ARG_INFO(0, from)
     ZEND_ARG_INFO(0, to)
 ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_trim, 0, 0, 1)
+    ZEND_ARG_INFO(0, string)
+    ZEND_ARG_INFO(0, what)
+ZEND_END_ARG_INFO()
