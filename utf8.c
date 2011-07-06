@@ -6,6 +6,7 @@
 #include "php_intl.h"
 #include "intl_error.h"
 #include <unicode/utf8.h>
+#include <unicode/ucasemap.h>
 #include "unicode.h"
 #include "utf16.h"
 #include "utf8.h"
@@ -56,11 +57,28 @@ int utf8_cp_to_cu(const char *string, int string_len, long cp_offset, int32_t *c
     return SUCCESS;
 }
 
-void utf8_foldcase(UChar **target, int32_t *target_len, const char *src, int src_len, UErrorCode *status)
+void utf8_foldcase(char **target, int32_t *target_len, const char *src, int src_len, UErrorCode *status)
 {
-    // 1. utf8 => utf16
-    // 2. utf16 => utf16 case folded
-    // 3. efree(intermediate utf16)
+    UCaseMap *cm;
+
+    cm = ucasemap_open("", 0, status);
+    if (U_FAILURE(*status)) {
+        return;
+    }
+    *target_len = ucasemap_utf8FoldCase(cm, NULL, 0, src, src_len, status);
+    if (U_BUFFER_OVERFLOW_ERROR != *status) {
+        return;
+    }
+    *status = U_ZERO_ERROR;
+    *target = emalloc((*target_len + 1) * sizeof(**target));
+    /*result_len = */ucasemap_utf8FoldCase(cm, *target, *target_len, src, src_len, status);
+    if (U_FAILURE(*status)) {
+        efree(*target);
+        *target = NULL;
+        *target_len = 0;
+    } else {
+        *target[*target_len] = '\0';
+    }
 }
 
 void utf8_add_cp_replacement(HashTable *ht, UChar32 cp_from, const char *cu_to, int32_t cu_to_len)
