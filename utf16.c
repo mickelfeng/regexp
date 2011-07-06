@@ -29,7 +29,7 @@ void utf16_foldcase(UChar **target, int32_t *target_len, const UChar *src, int32
         efree(*target);
         *target = NULL;
     } else {
-        *target[*target_len] = 0;
+        *(*target + *target_len) = 0;
     }
 }
 

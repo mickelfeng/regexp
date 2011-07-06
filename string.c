@@ -14,31 +14,6 @@
 #include <unicode/ubrk.h>
 #include <unicode/uset.h>
 
-/* <To remove> */
-#ifdef ZEND_DEBUG
-# ifdef ZEND_WIN32
-#  define DIRECTORY_SEPARATOR '\\'
-# else
-#  define DIRECTORY_SEPARATOR '/'
-# endif /* ZEND_WIN32 */
-static const char *ubasename(const char *filename)
-{
-    const char *c;
-
-    if (NULL == (c = strrchr(filename, DIRECTORY_SEPARATOR))) {
-        return filename;
-    } else {
-        return c + 1;
-    }
-}
-
-# define debug(format, ...) \
-    zend_output_debug_string(0, "%s:%d:" format " in %s()\n", ubasename(__FILE__), __LINE__, ## __VA_ARGS__, __func__)
-#else
-# define debug(format, ...)
-#endif /* ZEND_DEBUG */
-/* </To remove> */
-
 #define CHECK_STATUS(status, msg)                           \
     intl_error_set_code(NULL, status TSRMLS_CC);            \
     if (U_FAILURE(status)) {                                \
@@ -643,7 +618,7 @@ end:
 #endif /* UTF16_AS_INTERNAL */
 }
 
-PHP_FUNCTION(utf8_casecmp) // TODO: tests
+PHP_FUNCTION(utf8_casecmp)
 {
     ncasecmp(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE);
 }
@@ -970,12 +945,26 @@ PHP_FUNCTION(utf8_trim) // TODO: tests
     trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_BOTH);
 }
 
+/**
+ * TEST:
+ * - [lr]?trim
+ * - tr
+ * - pos
+ * - rpos
+ * - str
+ * - count_chars
+ * - word_count
+ **/
+
+/**
+ * locale support on case folding ?
+ **/
+
 // add: startswith, endswith (version cs and ci)
 
 // stri[r?pos|r?chr] : rewrite
 
 // explode : same
-// *printf : rewrite
 // implode, join : same
 // str_replace : same
 // strcmp : same
@@ -988,4 +977,5 @@ PHP_FUNCTION(utf8_trim) // TODO: tests
 // ucfirst, lcfirst : no sense ?
 // wordwrap : ?
 // str_shuffle : ?
+// *printf : rewrite
 // ...

@@ -61,7 +61,7 @@ void utf8_foldcase(char **target, int32_t *target_len, const char *src, int src_
 {
     UCaseMap *cm;
 
-    cm = ucasemap_open("", 0, status);
+    cm = ucasemap_open("", U_FOLD_CASE_DEFAULT, status);
     if (U_FAILURE(*status)) {
         return;
     }

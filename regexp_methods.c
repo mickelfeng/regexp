@@ -8,6 +8,7 @@
 #include "regexp_methods.h"
 #include "intl_data.h"
 #include "intl_convert.h"
+#include "unicode.h"
 
 #include <zend_exceptions.h>
 
@@ -108,29 +109,6 @@ static void intl_errors_setf_custom_msg(intl_error* err TSRMLS_DC, char *format,
             }                                                                                                 \
         }                                                                                                     \
     } while (0);
-
-#ifdef ZEND_DEBUG
-# ifdef ZEND_WIN32
-#  define DIRECTORY_SEPARATOR '\\'
-# else
-#  define DIRECTORY_SEPARATOR '/'
-# endif /* ZEND_WIN32 */
-const char *ubasename(const char *filename)
-{
-    const char *c;
-
-    if (NULL == (c = strrchr(filename, DIRECTORY_SEPARATOR))) {
-        return filename;
-    } else {
-        return c + 1;
-    }
-}
-
-# define debug(format, ...) \
-    zend_output_debug_string(0, "%s:%d:" format " in %s()\n", ubasename(__FILE__), __LINE__, ## __VA_ARGS__, __func__)
-#else
-# define debug(format, ...)
-#endif /* ZEND_DEBUG */
 
 static const UChar _UREGEXP_FAKE_USTR[] = { 0 };
 #define UREGEXP_FAKE_USTR _UREGEXP_FAKE_USTR, 0
@@ -397,6 +375,11 @@ end:
     RETURN_FALSE;
 }
 
+/**
+ * TODO:
+ * - eval flag equivalent?
+ * - preg_replace_callback equivalent?
+ **/
 PHP_FUNCTION(regexp_replace)
 {
     char *subject = NULL;
@@ -486,8 +469,6 @@ PHP_FUNCTION(regexp_split)
     }
     if (limit <= 0) {
         limit = INT_MAX;
-    } else if (1 == limit) {
-        //
     }
 
     REGEXP_METHOD_FETCH_OBJECT(TRUE);
