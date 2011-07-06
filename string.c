@@ -623,7 +623,38 @@ PHP_FUNCTION(utf8_reverse)
     RETVAL_STRINGL(result, string_len, FALSE);
 }
 
-static void findFirst_CaseSensitive(INTERNAL_FUNCTION_PARAMETERS, int want_only_pos)
+static inline char *memrnstr(char *haystack, char *needle, int needle_len, char *end)
+{
+    char *p;
+    char ne = needle[needle_len - 1];
+
+    if (1 == needle_len) {
+        return (char *) memrchr(haystack, *needle, end - haystack);
+    }
+
+    if (needle_len > end - haystack) {
+        return NULL;
+    }
+
+    p = end - needle_len;
+    while (p >= haystack) {
+        if ((p = (char *) memrchr(haystack, *needle, p - haystack + 1)) && ne == p[needle_len - 1]) {
+            if (!memcmp(needle, p, needle_len - 1)) {
+                return p;
+            }
+        }
+
+        if (NULL == p) {
+            return NULL;
+        }
+
+        p--;
+    }
+
+    return NULL;
+}
+
+static void find_case_sensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want_only_pos)
 {
     char *haystack = NULL;
     int haystack_len = 0;
@@ -648,7 +679,15 @@ static void findFirst_CaseSensitive(INTERNAL_FUNCTION_PARAMETERS, int want_only_
             php_error_docref(NULL TSRMLS_CC, E_WARNING, "Empty delimiter");
             goto end;
         }
-        found = php_memnstr(haystack + start_cu, Z_STRVAL_P(needle), Z_STRLEN_P(needle), haystack + haystack_len);
+        if (!last) {
+            found = php_memnstr(haystack + start_cu, Z_STRVAL_P(needle), Z_STRLEN_P(needle), haystack + haystack_len);
+        } else {
+            if (start_cp >= 0) {
+                found = memrnstr(haystack + start_cu, Z_STRVAL_P(needle), Z_STRLEN_P(needle), haystack + haystack_len);
+            } else {
+                found = memrnstr(haystack, Z_STRVAL_P(needle), Z_STRLEN_P(needle), haystack + start_cu);
+            }
+        }
     } else { // we search a code point (convert needle into long)
         UChar32 c;
         char cus[U8_MAX_LENGTH + 1] = { 0 };
@@ -658,7 +697,15 @@ static void findFirst_CaseSensitive(INTERNAL_FUNCTION_PARAMETERS, int want_only_
             goto end;
         }
         U8_APPEND_UNSAFE(cus, cus_length, c);
-        found = php_memnstr(haystack + start_cu, cus, cus_length, haystack + haystack_len);
+        if (!last) {
+            found = php_memnstr(haystack + start_cu, cus, cus_length, haystack + haystack_len);
+        } else {
+            if (start_cp >= 0) {
+                found = memrnstr(haystack + start_cu, cus, cus_length, haystack + haystack_len);
+            } else {
+                found = memrnstr(haystack, cus, cus_length, haystack + start_cu);
+            }
+        }
     }
     if (NULL != found) {
         if (want_only_pos) {
@@ -683,27 +730,22 @@ end:
 // TODO: rename firstpos/lastpos to firstIndex/lastIndex ?
 PHP_FUNCTION(utf8_firstsub) // TODO: tests
 {
-    findFirst_CaseSensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE);
+    find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, FALSE);
 }
 
 PHP_FUNCTION(utf8_firstpos) // TODO: tests
 {
-    findFirst_CaseSensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE);
-}
-
-static void findLast_CaseSensitive(INTERNAL_FUNCTION_PARAMETERS, int want_only_pos)
-{
-    //
+    find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, TRUE);
 }
 
 PHP_FUNCTION(utf8_lastsub)
 {
-    findLast_CaseSensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE);
+    find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, FALSE);
 }
 
 PHP_FUNCTION(utf8_lastpos)
 {
-    findLast_CaseSensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE);
+    find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, TRUE);
 }
 
 #include "../../standard/php_smart_str.h"
@@ -751,17 +793,46 @@ PHP_FUNCTION(utf8_tr) // TODO: tests
     RETVAL_STRINGL(result.c, result.len, 0);
 }
 
+enum {
+    TRIM_LEFT  = 1,
+    TRIM_RIGHT = 2,
+    TRIM_BOTH  = 3
+};
+
+static void trim(INTERNAL_FUNCTION_PARAMETERS, int mode)
+{
+    // si what, le compiler en une HashTable (associer le CP/UChar32 à rien)
+    // lors du parcours de la chaîne
+    // - avec what, supprimer ou non si présent ou non dans la HashTable
+    // - sans what, se baser sur u_whiteSpace
+}
+
+PHP_FUNCTION(utf8_rtrim)
+{
+    trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_RIGHT);
+}
+
+PHP_FUNCTION(utf8_ltrim)
+{
+    trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_LEFT);
+}
+
+PHP_FUNCTION(utf8_trim)
+{
+    trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_BOTH);
+}
+
 // add: startswith, endswith (version cs and ci)
 
 // ltrim, rtrim, trim : rewrite
-// strchr/strstr : rewrite (offsets)
-// str*pos : rewrite (for offsets and case insensitivity)
+// stri[r?pos|r?chr] : rewrite
 
 // explode : same
 // *printf : rewrite
 // implode, join : same
 // str_replace : same
 // strcmp : same
+// str_repeat : same
 
 // str_ireplace : rewrite
 // strichr/stripos : rewrite
@@ -772,5 +843,4 @@ PHP_FUNCTION(utf8_tr) // TODO: tests
 // ucfirst, lcfirst : no sense ?
 // wordwrap : ?
 // str_shuffle : ?
-// str_repeat : same
 // ...
