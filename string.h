@@ -31,4 +31,6 @@ PHP_FUNCTION(utf8_trim);
 PHP_FUNCTION(utf8_rtrim);
 PHP_FUNCTION(utf8_ltrim);
 
+PHP_FUNCTION(utf8_shuffle);
+
 #endif /* !INTL_STRING_H */

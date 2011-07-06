@@ -2,7 +2,8 @@
 # include "config.h"
 #endif /* HAVE_CONFIG_H */
 
-#include <php.h>
+#include "php.h"
+#include "../../standard/php_rand.h"
 #include "php_intl.h"
 #include "intl_data.h"
 #include "intl_convert.h"
@@ -10,6 +11,7 @@
 #include "utf8.h"
 #include "utf16.h"
 #include "string.h"
+#include "../../standard/php_smart_str.h"
 
 #include <unicode/ubrk.h>
 #include <unicode/uset.h>
@@ -102,7 +104,7 @@ PHP_FUNCTION(utf8_split)
     }
 }
 
-PHP_FUNCTION(utf8_count_chars) // not tested
+PHP_FUNCTION(utf8_count_chars) // TODO: tests
 {
     enum {
         ARRAY_ALL_FREQ      = 0,
@@ -191,7 +193,7 @@ PHP_FUNCTION(utf8_count_chars) // not tested
                 break;
             }
             status = U_ZERO_ERROR;
-            uresult = emalloc((uresult_len + 1) * sizeof(*uresult));
+            uresult = mem_new_n(*uresult, uresult_len + 1);
             /*uresult_len = */uset_toPattern(set, uresult, uresult_len, TRUE, &status);
             if (U_FAILURE(status)) {
                 efree(uresult);
@@ -404,7 +406,7 @@ PHP_FUNCTION(utf8_chr)
         return;
     }
     s_len = U8_LENGTH(cp);
-    s = emalloc((s_len + 1) * sizeof(*s));
+    s = mem_new_n(*s, s_len + 1);
     U8_APPEND(s, i, s_len, cp, isError);
     s[s_len] = '\0';
 
@@ -454,7 +456,7 @@ static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, func_full_case_mapping
     UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
     do { /* Iteration needed: string may be longer than original ! */
         uresult_size = ++tries * ustring_len + 1;
-        uresult = erealloc(uresult, uresult_size * sizeof(*uresult));
+        uresult = renew_n(uresult, *uresult, uresult_size);
         uresult_len = func(uresult, uresult_size, ustring, ustring_len, locale, &status);
         if (U_SUCCESS(status)) {
             break;
@@ -479,10 +481,10 @@ end:
         goto end;
     }
     status = U_ZERO_ERROR;
-    result = emalloc((result_len + 1) * sizeof(*result));
+    result = mem_new_n(*result, result_len + 1);
     /*result_len = */func(cm, result, result_len, string, string_len, &status);
     result[result_len] = '\0';
-    RETVAL_STRINGL(result, result_len, 0);
+    RETVAL_STRINGL(result, result_len, FALSE);
 
     if (FALSE) {
 end:
@@ -669,7 +671,7 @@ PHP_FUNCTION(utf8_reverse)
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &string, &string_len)) {
         return;
     }
-    result = emalloc((string_len + 1) * sizeof(*result));
+    result = mem_new_n(*result, string_len + 1);
     last = cu_offset = string_len;
     r = result;
     while (cu_offset > 0) {
@@ -772,9 +774,9 @@ static void find_case_sensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want
             RETURN_LONG((long) u8_countChar32(haystack, found - haystack));
         } else {
             if (before) {
-                RETURN_STRINGL(haystack, found - haystack, 1);
+                RETURN_STRINGL(haystack, found - haystack, TRUE);
             } else {
-                RETURN_STRINGL(found, haystack_len - (found - haystack), 1);
+                RETURN_STRINGL(found, haystack_len - (found - haystack), TRUE);
             }
         }
     }
@@ -807,13 +809,6 @@ PHP_FUNCTION(utf8_lastpos)
 {
     find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, TRUE);
 }
-
-static void find_case_insensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want_only_pos)
-{
-    // TODO
-}
-
-#include "../../standard/php_smart_str.h"
 
 PHP_FUNCTION(utf8_tr) // TODO: tests
 {
@@ -855,7 +850,7 @@ PHP_FUNCTION(utf8_tr) // TODO: tests
     zend_hash_destroy(&map);
 
     smart_str_0(&result);
-    RETVAL_STRINGL(result.c, result.len, 0);
+    RETVAL_STRINGL(result.c, result.len, FALSE);
 }
 
 enum {
@@ -924,7 +919,7 @@ static void trim(INTERNAL_FUNCTION_PARAMETERS, int mode)
         zend_hash_destroy(&filter);
     }
     if (start < string_len) {
-        RETURN_STRINGL(string + start, end - start, 1);
+        RETURN_STRINGL(string + start, end - start, TRUE);
     } else {
         RETURN_EMPTY_STRING();
     }
@@ -945,6 +940,48 @@ PHP_FUNCTION(utf8_trim) // TODO: tests
     trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_BOTH);
 }
 
+PHP_FUNCTION(utf8_shuffle) // TODO: tests
+{
+    UChar32 c;
+    int i, cp;
+    UChar32 *chars;
+    char *result;
+    long rnd_idx;
+    int32_t cp_count;
+    char *string = NULL;
+    int string_len = 0;
+
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &string, &string_len)) {
+        return;
+    }
+    cp_count = u8_countChar32(string, string_len);
+    if (cp_count <= 1) {
+        RETURN_STRINGL(string, string_len, 1);
+    }
+    chars = mem_new_n(*chars, cp_count);
+    result = mem_new_n(*result, string_len + 1);
+    for (i = cp = 0; i < string_len; cp++) {
+        U8_NEXT(string, i, string_len, c);
+        chars[cp] = c;
+    }
+    for (cp = cp_count; --cp; /* NOP */) {
+        rnd_idx = php_rand(TSRMLS_C);
+        RAND_RANGE(rnd_idx, 0, cp, PHP_RAND_MAX);
+        if (cp != rnd_idx) {
+            c = chars[cp];
+            chars[cp] = chars[rnd_idx];
+            chars[rnd_idx] = c;
+        }
+    }
+    for (i = cp = 0; cp < cp_count; cp++) {
+        U8_APPEND_UNSAFE(result, i, chars[cp]);
+    }
+    result[string_len] = '\0';
+    efree(chars);
+
+    RETVAL_STRINGL(result, string_len, FALSE);
+}
+
 /**
  * TEST:
  * - [lr]?trim
@@ -954,6 +991,12 @@ PHP_FUNCTION(utf8_trim) // TODO: tests
  * - str
  * - count_chars
  * - word_count
+ **/
+
+/**
+ * RENAME:
+ * - sub => slice
+ * - ...
  **/
 
 /**
@@ -976,6 +1019,5 @@ PHP_FUNCTION(utf8_trim) // TODO: tests
 // substr_compare, substr_replace : rewrite (offsets)
 // ucfirst, lcfirst : no sense ?
 // wordwrap : ?
-// str_shuffle : ?
 // *printf : rewrite
 // ...

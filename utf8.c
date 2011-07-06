@@ -34,6 +34,10 @@ int32_t u8_countChar32(const uint8_t *string, int32_t length)
     return cpcount;
 }
 
+/**
+ * keep cp_count ?
+ * remove intl_error_set + TSRMLS_DC parameter (caller handle this)
+ **/
 int utf8_cp_to_cu(const char *string, int string_len, long cp_offset, int32_t *cu_offset TSRMLS_DC)
 {
     if (0 != cp_offset) {
@@ -71,7 +75,7 @@ void utf8_foldcase(char **target, int32_t *target_len, const char *src, int src_
         return;
     }
     *status = U_ZERO_ERROR;
-    *target = emalloc((*target_len + 1) * sizeof(**target));
+    *target = mem_new_n(**target, *target_len + 1);
     /* *target_len = */ucasemap_utf8FoldCase(cm, *target, *target_len, src, src_len, status);
     if (U_FAILURE(*status)) {
         efree(*target);

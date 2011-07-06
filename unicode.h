@@ -2,8 +2,8 @@
 
 # define INTL_UNICODE_H
 
-#ifdef ZEND_DEBUG
-# include <php.h>
+# ifdef ZEND_DEBUG
+#  include <php.h>
 static const char *ubasename(const char *filename)
 {
     const char *c;
@@ -15,11 +15,15 @@ static const char *ubasename(const char *filename)
     }
 }
 
-# define debug(format, ...) \
+#  define debug(format, ...) \
     zend_output_debug_string(0, "%s:%d:" format " in %s()\n", ubasename(__FILE__), __LINE__, ## __VA_ARGS__, __func__)
-#else
-# define debug(format, ...)
-#endif /* ZEND_DEBUG */
+# else
+#  define debug(format, ...)
+# endif /* ZEND_DEBUG */
+
+# define mem_new(type)           emalloc((sizeof(type)))
+# define mem_new_n(type, n)      emalloc((sizeof(type) * (n)))
+# define mem_renew(ptr, type, n) erealloc((ptr), (sizeof(type) * (n)))
 
 int unicode_convert_needle_to_cp(zval *, UChar32 * TSRMLS_DC);
 

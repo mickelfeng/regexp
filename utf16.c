@@ -19,7 +19,7 @@ void utf16_foldcase(UChar **target, int32_t *target_len, const UChar *src, int32
     *status = U_ZERO_ERROR;
     do { /* Iteration needed: string may be longer than original ! */
         target_size = ++tries * src_len + 1;
-        *target = erealloc(*target, target_size * sizeof(*target));
+        *target = mem_renew(*target, *target, target_size);
         *target_len = u_strFoldCase(*target, target_size, src, src_len, 0, status);
         if (U_SUCCESS(status)) {
             break;
