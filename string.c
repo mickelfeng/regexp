@@ -436,12 +436,17 @@ PHP_FUNCTION(utf8_chr)
     RETURN_STRINGL(s, s_len, FALSE);
 }
 
-typedef int32_t (*func_full_case_mapping_t)(UChar *dest, int32_t destCapacity, const UChar *src, int32_t srcLength, const char *locale, UErrorCode *status);
+#ifdef UTF16_AS_INTERNAL
+typedef int32_t (*func_full_case_mapping_t)(UChar *, int32_t, const UChar *, int32_t, const char *, UErrorCode *);
 
 static int32_t u_strToTitleWithoutBI(UChar *dest, int32_t destCapacity, const UChar *src, int32_t srcLength, const char *locale, UErrorCode *status)
 {
     return u_strToTitle(dest, destCapacity, src, srcLength, NULL, locale, status);
 }
+#else
+# include <unicode/ucasemap.h>
+typedef int32_t (*func_full_case_mapping_t)(UCaseMap *, char *, int32_t, const char *, int32_t, UErrorCode *);
+#endif /* UTF16_AS_INTERNAL */
 
 static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, func_full_case_mapping_t func)
 {
@@ -450,14 +455,18 @@ static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, func_full_case_mapping
     char *locale = NULL;
     int string_len = 0;
     char *string = NULL;
+#ifdef UTF16_AS_INTERNAL
     int32_t ustring_len = 0;
     UChar *ustring = NULL;
     int32_t uresult_len = 0;
     int32_t uresult_size = 0;
     UChar *uresult = NULL;
+    int tries = 0;
+#else
+    UCaseMap *cm = NULL;
+#endif /* UTF16_AS_INTERNAL */
     int32_t result_len = 0;
     char *result = NULL;
-    int tries = 0;
 
     intl_error_reset(NULL TSRMLS_CC);
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|s", &string, &string_len, &locale, &locale_len)) {
@@ -466,6 +475,7 @@ static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, func_full_case_mapping
     if (0 == locale_len) {
         locale = INTL_G(default_locale);
     }
+#ifdef UTF16_AS_INTERNAL
     UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
     do { /* Iteration needed: string may be longer than original ! */
         uresult_size = ++tries * ustring_len + 1;
@@ -486,21 +496,54 @@ end:
     if (NULL != ustring) {
         efree(ustring);
     }
+#else
+    cm = ucasemap_open(locale, 0, &status);
+    CHECK_STATUS(status, "full case mapping");
+    result_len = func(cm, NULL, 0, string, string_len, &status);
+    if (U_BUFFER_OVERFLOW_ERROR != status) {
+        goto end;
+    }
+    status = U_ZERO_ERROR;
+    result = emalloc((result_len + 1) * sizeof(*result));
+    /*result_len = */func(cm, result, result_len, string, string_len, &status);
+    result[result_len] = '\0';
+    RETVAL_STRINGL(result, result_len, 0);
+
+    if (FALSE) {
+end:
+        RETVAL_FALSE;
+    }
+    if (NULL != cm) {
+        ucasemap_close(cm);
+    }
+#endif /* UTF16_AS_INTERNAL */
 }
 
 PHP_FUNCTION(utf8_toupper)
 {
+#ifdef UTF16_AS_INTERNAL
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToUpper);
+#else
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, ucasemap_utf8ToUpper);
+#endif /* UTF16_AS_INTERNAL */
 }
 
 PHP_FUNCTION(utf8_tolower)
 {
+#ifdef UTF16_AS_INTERNAL
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToLower);
+#else
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, ucasemap_utf8ToLower);
+#endif /* UTF16_AS_INTERNAL */
 }
 
 PHP_FUNCTION(utf8_totitle)
 {
+#ifdef UTF16_AS_INTERNAL
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToTitleWithoutBI);
+#else
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, ucasemap_utf8ToTitle);
+#endif /* UTF16_AS_INTERNAL */
 }
 
 static void ncasecmp(INTERNAL_FUNCTION_PARAMETERS, int ncmpbehave)
@@ -870,17 +913,17 @@ static void trim(INTERNAL_FUNCTION_PARAMETERS, int mode)
     }
 }
 
-PHP_FUNCTION(utf8_rtrim)
+PHP_FUNCTION(utf8_rtrim) // TODO: tests
 {
     trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_RIGHT);
 }
 
-PHP_FUNCTION(utf8_ltrim)
+PHP_FUNCTION(utf8_ltrim) // TODO: tests
 {
     trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_LEFT);
 }
 
-PHP_FUNCTION(utf8_trim)
+PHP_FUNCTION(utf8_trim) // TODO: tests
 {
     trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_BOTH);
 }
@@ -897,10 +940,8 @@ PHP_FUNCTION(utf8_trim)
 // str_repeat : same
 
 // str_ireplace : rewrite
-// strichr/stripos : rewrite
 // strnatcasecmp, strnatcmp : use collations?
 // strncasecmp, strcasecmp : rewrite (2 versions : with case folding and full/locale?)
-// strtr : rewrite
 // substr_compare, substr_replace : rewrite (offsets)
 // ucfirst, lcfirst : no sense ?
 // wordwrap : ?
