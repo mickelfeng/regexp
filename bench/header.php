@@ -1,0 +1,25 @@
+<?php
+$unwanted_vars = get_defined_vars();
+
+$A="\xF0\x9D\x98\xBC"; # 1D63C, Lu
+$B="\xF0\x9D\x98\xBD";
+$C="\xF0\x9D\x98\xBE";
+$D="\xF0\x9D\x98\xBF";
+$E="\xF0\x9D\x99\x80";
+$N0="\xF0\x9D\x9F\x8E"; # 1D7CE, Nd
+$N1="\xF0\x9D\x9F\x8F";
+$N2="\xF0\x9D\x9F\x90";
+$N3="\xF0\x9D\x9F\x91";
+$N4="\xF0\x9D\x9F\x92";
+$N5="\xF0\x9D\x9F\x93";
+$N6="\xF0\x9D\x9F\x94";
+$N7="\xF0\x9D\x9F\x95";
+$N8="\xF0\x9D\x9F\x96";
+$N9="\xF0\x9D\x9F\x97";
+
+$myvars = array_diff(get_defined_vars(), $unwanted_vars);
+
+shuffle($myvars);
+$string = str_repeat(implode($myvars), rand(0, 1000));
+
+mb_internal_encoding('UTF-8');
