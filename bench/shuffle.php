@@ -5,11 +5,16 @@ require(__DIR__ . '/header.php');
 $b = new Benchmark;
 $b->add(
     function ($string) {
-        $cp = mb_split('//', $string);
+        $ret = array();
+        $l = mb_strlen($string);
+
+        for ($i = 0; $i < $l; $i++) {
+            $cp[] = mb_substr($string, $i, 1);
+        }
         shuffle($cp);
         implode($cp);
     },
-    "mb_split/shuffle/implode (default encoding)"
+    "mb_strlen/mb_substr/shuffle/implode (default encoding)"
 )
 ->add(
     function ($string) {
