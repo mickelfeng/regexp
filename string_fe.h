@@ -4,10 +4,10 @@
     PHP_FE(utf8_reverse, arginfo_string)
     PHP_FE(utf8_shuffle, arginfo_string)
 
-    PHP_FE(utf8_word_count, arginfo_word_count)
+    PHP_FE(utf8_count_words, arginfo_count_words)
     PHP_FE(utf8_count_chars, arginfo_count_chars)
     PHP_FE(utf8_split, arginfo_split)
-    PHP_FE(utf8_sub, arginfo_sub)
+    PHP_FE(utf8_slice, arginfo_slice)
     PHP_FE(utf8_casecmp, arginfo_casecmp)
     PHP_FE(utf8_ncmp, arginfo_ncmp)
     PHP_FE(utf8_ncasecmp, arginfo_ncmp)

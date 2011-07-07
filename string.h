@@ -7,10 +7,10 @@ PHP_FUNCTION(utf8_chr);
 PHP_FUNCTION(utf8_ord);
 PHP_FUNCTION(utf8_reverse);
 
-PHP_FUNCTION(utf8_word_count);
+PHP_FUNCTION(utf8_count_words);
 PHP_FUNCTION(utf8_count_chars);
 PHP_FUNCTION(utf8_split);
-PHP_FUNCTION(utf8_sub);
+PHP_FUNCTION(utf8_slice);
 
 PHP_FUNCTION(utf8_ncmp);
 PHP_FUNCTION(utf8_ncasecmp);

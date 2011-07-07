@@ -223,7 +223,7 @@ PHP_FUNCTION(utf8_count_chars) // TODO: tests
     uset_close(set);
 }
 
-PHP_FUNCTION(utf8_sub)
+PHP_FUNCTION(utf8_slice)
 {
     char *string = NULL;
     int string_len = 0;
@@ -326,7 +326,7 @@ end:
 #endif /* UTF16_AS_INTERNAL */
 }
 
-PHP_FUNCTION(utf8_word_count) // TODO: tests
+PHP_FUNCTION(utf8_count_words) // TODO: tests
 {
     enum {
         COUNT_ONLY    = 0,
@@ -947,7 +947,7 @@ PHP_FUNCTION(utf8_trim) // TODO: tests
     trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_BOTH);
 }
 
-PHP_FUNCTION(utf8_shuffle) // TODO: tests
+PHP_FUNCTION(utf8_shuffle)
 {
     UChar32 c;
     int i, cp;
@@ -1010,9 +1010,37 @@ PHP_FUNCTION(utf8_shuffle) // TODO: tests
  * locale support on case folding ?
  **/
 
+/**
+ * Equivalents :
+ *
+ * substr => utf8_slice
+ * strtolower => utf8_tolower
+ * strtoupper => utf8_toupper
+ * ucwords => utf8_totitle (not strictly, others chars are lowered)
+ * trim => utf8_trim (TODO: tests)
+ * ltrim => utf8_ltrim (TODO: tests)
+ * rtrim => utf8_rtrim (TODO: tests)
+ * chr => utf8_chr
+ * ord => utf8_ord (TODO: make index optionnal and 0 as default ?)
+ * strtr => utf8_tr (TODO: tests)
+ * str_shuffle => utf8_shuffle
+ * str_reverse => utf8_reverse
+ * str_split => utf8_split
+ * strlen => utf8_len
+ * str_word_count => utf8_count_words (TODO: tests)
+ * count_chars => utf8_count_chars (TODO: some modes ask too much memory ; tests)
+ * strcasecmp => utf8_casecmp
+ * strncasecmp => utf8_ncasecmp
+ * strncmp => utf8_ncmp
+ * strpos => utf8_firstpos (TODO: rename ?)
+ * strrpos => utf8_lastpos (TODO: rename ?)
+ * strstr/strchr => utf8_firstsub (TODO: rename ?)
+ * strrchr => utf8_lastsub (TODO: rename ?)
+ **/
+
 // add: startswith, endswith (version cs and ci)
 
-// stri[r?pos|r?chr] : rewrite
+// stri[r?pos|r?chr] : rewrite (depends on locale support with case folding)
 
 // explode : same
 // implode, join : same
@@ -1023,7 +1051,7 @@ PHP_FUNCTION(utf8_shuffle) // TODO: tests
 // str_ireplace : rewrite
 // strnatcasecmp, strnatcmp : use collations?
 // strncasecmp, strcasecmp : rewrite (2 versions : with case folding and full/locale?)
-// substr_compare, substr_replace : rewrite (offsets)
+// substr_compare, substr_replace, substr_count : rewrite (offsets)
 // ucfirst, lcfirst : no sense ?
 // wordwrap : ?
 // *printf : rewrite

@@ -1,5 +1,5 @@
 --TEST--
-Test utf8_sub function
+Test utf8_slice function
 --SKIPIF--
 <?php if (!extension_loaded('intl')) echo 'skip'; ?>
 --FILE--
@@ -17,25 +17,25 @@ $E="\xF0\x9D\x99\x80";
 $F="\xF0\x9D\x99\x81";
 $input = "$A$B$C$D$E$F";
 
-var_dump(utf8_sub($input));
+var_dump(utf8_slice($input));
 echo "\n";
-var_dump(utf8_sub($input, 1, 2, 3));
+var_dump(utf8_slice($input, 1, 2, 3));
 echo "\n";
-echo utf8_sub($input, -1) === $F              ? OK : FAILED, "\n";
-echo utf8_sub($input, -2) === "$E$F"          ? OK : FAILED, "\n";
-echo utf8_sub($input, -3, 1) === $D           ? OK : FAILED, "\n";
-echo utf8_sub($input, 0, -1) === "$A$B$C$D$E" ? OK : FAILED, "\n";
-echo utf8_sub($input, 2, -1) === "$C$D$E"     ? OK : FAILED, "\n";
-echo utf8_sub($input, 4, -4) === ''           ? OK : FAILED, "\n";
-echo utf8_sub($input, -3, -1) === "$D$E"      ? OK : FAILED, "\n";
+echo utf8_slice($input, -1) === $F              ? OK : FAILED, "\n";
+echo utf8_slice($input, -2) === "$E$F"          ? OK : FAILED, "\n";
+echo utf8_slice($input, -3, 1) === $D           ? OK : FAILED, "\n";
+echo utf8_slice($input, 0, -1) === "$A$B$C$D$E" ? OK : FAILED, "\n";
+echo utf8_slice($input, 2, -1) === "$C$D$E"     ? OK : FAILED, "\n";
+echo utf8_slice($input, 4, -4) === ''           ? OK : FAILED, "\n";
+echo utf8_slice($input, -3, -1) === "$D$E"      ? OK : FAILED, "\n";
 ?>
 --EXPECTF--
 
-Warning: utf8_sub() expects at least 2 parameters, 1 given in %s on line %d
+Warning: utf8_slice() expects at least 2 parameters, 1 given in %s on line %d
 NULL
 
 
-Warning: utf8_sub() expects at most 3 parameters, 4 given in %s on line %d
+Warning: utf8_slice() expects at most 3 parameters, 4 given in %s on line %d
 NULL
 
 OK
