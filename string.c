@@ -43,7 +43,7 @@
 #define UTF16_CP_TO_CU(ustring, ustring_len, cp_offset, cu_offset)                                            \
     do {                                                                                                      \
         if (0 != cp_offset) {                                                                                 \
-            int32_t count_cp = u_countChar32(ustring, ustring_len);                                           \
+            int32_t count_cp = u_countChar32((const uint8_t *) ustring, ustring_len);                         \
             if (cp_offset < 0) {                                                                              \
                 if (cp_offset < -count_cp) {                                                                  \
                     intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
@@ -64,20 +64,20 @@
 #define UTF8_CP_TO_CU(string, string_len, cp_offset, cu_offset)                                               \
     do {                                                                                                      \
         if (0 != cp_offset) {                                                                                 \
-            int32_t count_cp = u8_countChar32(string, string_len);                                            \
+            int32_t count_cp = u8_countChar32((const uint8_t *) string, string_len);                          \
             if (cp_offset < 0) {                                                                              \
                 if (cp_offset < -count_cp) {                                                                  \
                     intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
                     goto end;                                                                                 \
                 }                                                                                             \
                 cu_offset = string_len;                                                                       \
-                U8_BACK_N(string, 0, cu_offset, -cp_offset);                                                  \
+                U8_BACK_N((const uint8_t *) string, 0, cu_offset, -cp_offset);                                \
             } else {                                                                                          \
                 if (cp_offset >= count_cp) {                                                                  \
                     intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
                     goto end;                                                                                 \
                 }                                                                                             \
-                U8_FWD_N(string, cu_offset, string_len, cp_offset);                                           \
+                U8_FWD_N((const uint8_t *) string, cu_offset, string_len, cp_offset);                         \
             }                                                                                                 \
         }                                                                                                     \
     } while (0);
@@ -97,11 +97,19 @@ PHP_FUNCTION(utf8_split)
         RETURN_FALSE;
     }
     array_init(return_value);
-    while (cu_offset < string_len) {
-        U8_FWD_N(string, cu_offset, string_len, length);
-        add_next_index_stringl(return_value, string + last, cu_offset - last, TRUE);
-        last = cu_offset;
-    }
+    /*if (1 == length) {
+        while (cu_offset < string_len) {
+            U8_FWD_1(string, cu_offset, string_len);
+            add_next_index_stringl(return_value, string + last, cu_offset - last, TRUE);
+            last = cu_offset;
+        }
+    } else {*/
+        while (cu_offset < string_len) {
+            U8_FWD_N(string, cu_offset, string_len, length);
+            add_next_index_stringl(return_value, string + last, cu_offset - last, TRUE);
+            last = cu_offset;
+        }
+    /*}*/
 }
 
 PHP_FUNCTION(utf8_count_chars) // TODO: tests
@@ -230,7 +238,7 @@ PHP_FUNCTION(utf8_sub)
         U8_FWD_N(string, cu_from, string_len, cp_start);
     } else if (cp_start < 0) {
         cu_from = string_len;
-        U8_BACK_N(string, 0, cu_from, -cp_start);
+        U8_BACK_N((const uint8_t *) string, 0, cu_from, -cp_start);
     }
     if (ZEND_NUM_ARGS() <= 2) {
         cu_end = string_len;
@@ -240,7 +248,7 @@ PHP_FUNCTION(utf8_sub)
             U8_FWD_N(string, cu_end, string_len, cp_length);
         } else if (cp_length < 0) {
             cu_end = string_len;
-            U8_BACK_N(string, 0, cu_end, -cp_length);
+            U8_BACK_N((const uint8_t *) string, 0, cu_end, -cp_length);
         }
     }
 
@@ -274,7 +282,7 @@ end:
         efree(ustring);
     }
 #else
-    RETVAL_LONG((long) u8_countChar32(string, string_len));
+    RETVAL_LONG((long) u8_countChar32((const uint8_t *) string, string_len));
 #endif /* UTF16_AS_INTERNAL */
 }
 
@@ -400,14 +408,13 @@ PHP_FUNCTION(utf8_chr)
     long cp;
     char *s;
     int32_t s_len, i = 0;
-    UBool isError = FALSE;
 
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &cp)) {
         return;
     }
     s_len = U8_LENGTH(cp);
     s = mem_new_n(*s, s_len + 1);
-    U8_APPEND(s, i, s_len, cp, isError);
+    U8_APPEND_UNSAFE(s, i, cp);
     s[s_len] = '\0';
 
     RETURN_STRINGL(s, s_len, FALSE);
@@ -501,7 +508,7 @@ PHP_FUNCTION(utf8_toupper)
 #ifdef UTF16_AS_INTERNAL
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToUpper);
 #else
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, ucasemap_utf8ToUpper);
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, (func_full_case_mapping_t) ucasemap_utf8ToUpper);
 #endif /* UTF16_AS_INTERNAL */
 }
 
@@ -510,7 +517,7 @@ PHP_FUNCTION(utf8_tolower)
 #ifdef UTF16_AS_INTERNAL
     fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToLower);
 #else
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, ucasemap_utf8ToLower);
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, (func_full_case_mapping_t)ucasemap_utf8ToLower);
 #endif /* UTF16_AS_INTERNAL */
 }
 
@@ -594,7 +601,7 @@ end:
         char *ref;
         int32_t ref_len;
 
-        if (u8_countChar32(string1, string1_len) >= u8_countChar32(string2, string2_len)) {
+        if (u8_countChar32((const uint8_t *) string1, string1_len) >= u8_countChar32((const uint8_t *) string2, string2_len)) {
             ref = string1;
             ref_len = string1_len;
         } else {
@@ -649,7 +656,7 @@ PHP_FUNCTION(utf8_ncmp)
         RETURN_FALSE;
     }
     /* result were wrong if the shorter string (in CP) was used as reference */
-    if (u8_countChar32(string1, string1_len) >= u8_countChar32(string2, string2_len)) {
+    if (u8_countChar32((const uint8_t *) string1, string1_len) >= u8_countChar32((const uint8_t *) string2, string2_len)) {
         ref = string1;
         ref_len = string1_len;
     } else {
@@ -675,7 +682,7 @@ PHP_FUNCTION(utf8_reverse)
     last = cu_offset = string_len;
     r = result;
     while (cu_offset > 0) {
-        U8_BACK_1(string, 0, cu_offset);
+        U8_BACK_1((const uint8_t *) string, 0, cu_offset);
         memcpy(r, string + cu_offset, last - cu_offset);
         r += last - cu_offset;
         last = cu_offset;
@@ -753,7 +760,7 @@ static void find_case_sensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want
     } else { // we search a code point (convert needle into long)
         UChar32 c;
         char cus[U8_MAX_LENGTH + 1] = { 0 };
-        char cus_length = 0;
+        int cus_length = 0;
 
         if (SUCCESS != unicode_convert_needle_to_cp(needle, &c TSRMLS_CC)) {
             goto end;
@@ -771,7 +778,7 @@ static void find_case_sensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want
     }
     if (NULL != found) {
         if (want_only_pos) {
-            RETURN_LONG((long) u8_countChar32(haystack, found - haystack));
+            RETURN_LONG((long) u8_countChar32((const uint8_t *) haystack, found - haystack));
         } else {
             if (before) {
                 RETURN_STRINGL(haystack, found - haystack, TRUE);
@@ -830,7 +837,7 @@ PHP_FUNCTION(utf8_tr) // TODO: tests
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss", &string, &string_len, &from, &from_len, &to, &to_len)) {
         return;
     }
-    zend_hash_init(&map, u8_countChar32(from, from_len), NULL, NULL, FALSE);
+    zend_hash_init(&map, u8_countChar32((const uint8_t *) from, from_len), NULL, NULL, FALSE);
     for (f = p = t = 0; f < from_len && t < to_len; /* NOP */) {
         U8_NEXT(from, f, from_len, c);
         U8_FWD_1(to, t, to_len);
@@ -876,7 +883,7 @@ static void trim(INTERNAL_FUNCTION_PARAMETERS, int mode)
     if (NULL != what) {
         void *dummy = (void *) 1;
 
-        zend_hash_init(&filter, u8_countChar32(what, what_len), NULL, NULL, FALSE);
+        zend_hash_init(&filter, u8_countChar32((const uint8_t *) what, what_len), NULL, NULL, FALSE);
         for (i = 0; i < what_len; /* NOP */) {
             U8_NEXT(what, i, what_len, c);
             zend_hash_index_update(&filter, c, &dummy, sizeof(void *), NULL);
@@ -954,7 +961,7 @@ PHP_FUNCTION(utf8_shuffle) // TODO: tests
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &string, &string_len)) {
         return;
     }
-    cp_count = u8_countChar32(string, string_len);
+    cp_count = u8_countChar32((const uint8_t *) string, string_len);
     if (cp_count <= 1) {
         RETURN_STRINGL(string, string_len, 1);
     }
