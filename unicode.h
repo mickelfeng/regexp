@@ -4,7 +4,7 @@
 
 # ifdef ZEND_DEBUG
 #  include <php.h>
-static const char *ubasename(const char *filename)
+static const inline char *ubasename(const char *filename)
 {
     const char *c;
 
@@ -21,10 +21,29 @@ static const char *ubasename(const char *filename)
 #  define debug(format, ...)
 # endif /* ZEND_DEBUG */
 
+# ifdef __GNUC__
+#  define UNUSED(x) UNUSED_ ## x __attribute__((unused))
+# else
+#  define UNUSED
+# endif /* UNUSED */
+
 # define mem_new(type)           emalloc((sizeof(type)))
 # define mem_new_n(type, n)      emalloc((sizeof(type) * (n)))
 # define mem_renew(ptr, type, n) erealloc((ptr), (sizeof(type) * (n)))
 
+#define DEFAULT_NORMALIZATION UNORM_NFKC
+
+typedef enum {
+    UCASE_NONE,
+    UCASE_FOLD,
+    UCASE_LOWER,
+    UCASE_UPPER,
+    UCASE_TITLE,
+    UCASE_COUNT
+} UCaseType;
+
 int unicode_convert_needle_to_cp(zval *, UChar32 * TSRMLS_DC);
+void utf8_fullcase(char **, int32_t *, const char *, int, const char *, UCaseType, UErrorCode *);
+void utf16_fullcase(UChar **, int32_t *, const UChar *, int, const char *, UCaseType, UErrorCode *);
 
 #endif /* !INTL_UNICODE_H */

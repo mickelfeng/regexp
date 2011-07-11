@@ -2,6 +2,11 @@
 # include "config.h"
 #endif /* HAVE_CONFIG_H */
 
+#include <string.h>
+#include <unicode/ubrk.h>
+#include <unicode/uset.h>
+#include <unicode/unorm.h>
+
 #include "php.h"
 #include "../../standard/php_rand.h"
 #include "php_intl.h"
@@ -12,9 +17,6 @@
 #include "utf16.h"
 #include "string.h"
 #include "../../standard/php_smart_str.h"
-
-#include <unicode/ubrk.h>
-#include <unicode/uset.h>
 
 #define CHECK_STATUS(status, msg)                           \
     intl_error_set_code(NULL, status TSRMLS_CC);            \
@@ -420,35 +422,13 @@ PHP_FUNCTION(utf8_chr)
     RETURN_STRINGL(s, s_len, FALSE);
 }
 
-#ifdef UTF16_AS_INTERNAL
-typedef int32_t (*func_full_case_mapping_t)(UChar *, int32_t, const UChar *, int32_t, const char *, UErrorCode *);
-
-static int32_t u_strToTitleWithoutBI(UChar *dest, int32_t destCapacity, const UChar *src, int32_t srcLength, const char *locale, UErrorCode *status)
+static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, UCaseType ct)
 {
-    return u_strToTitle(dest, destCapacity, src, srcLength, NULL, locale, status);
-}
-#else
-# include <unicode/ucasemap.h>
-typedef int32_t (*func_full_case_mapping_t)(UCaseMap *, char *, int32_t, const char *, int32_t, UErrorCode *);
-#endif /* UTF16_AS_INTERNAL */
-
-static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, func_full_case_mapping_t func)
-{
-    UErrorCode status = U_ZERO_ERROR;
+    UErrorCode status;
     int locale_len = 0;
     char *locale = NULL;
     int string_len = 0;
     char *string = NULL;
-#ifdef UTF16_AS_INTERNAL
-    int32_t ustring_len = 0;
-    UChar *ustring = NULL;
-    int32_t uresult_len = 0;
-    int32_t uresult_size = 0;
-    UChar *uresult = NULL;
-    int tries = 0;
-#else
-    UCaseMap *cm = NULL;
-#endif /* UTF16_AS_INTERNAL */
     int32_t result_len = 0;
     char *result = NULL;
 
@@ -459,75 +439,33 @@ static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, func_full_case_mapping
     if (0 == locale_len) {
         locale = INTL_G(default_locale);
     }
-#ifdef UTF16_AS_INTERNAL
-    UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
-    do { /* Iteration needed: string may be longer than original ! */
-        uresult_size = ++tries * ustring_len + 1;
-        uresult = renew_n(uresult, *uresult, uresult_size);
-        uresult_len = func(uresult, uresult_size, ustring, ustring_len, locale, &status);
-        if (U_SUCCESS(status)) {
-            break;
-        }
-    } while (U_BUFFER_OVERFLOW_ERROR == status);
-    CHECK_STATUS(status, "full case mapping");
-    UTF16_TO_UTF8(status, result, result_len, uresult, uresult_len);
-    RETVAL_STRINGL(result, result_len, 0);
-
-end:
-    if (NULL != uresult) {
-        efree(uresult);
-    }
-    if (NULL != ustring) {
-        efree(ustring);
-    }
-#else
-    cm = ucasemap_open(locale, 0, &status);
-    CHECK_STATUS(status, "full case mapping");
-    result_len = func(cm, NULL, 0, string, string_len, &status);
-    if (U_BUFFER_OVERFLOW_ERROR != status) {
-        goto end;
-    }
     status = U_ZERO_ERROR;
-    result = mem_new_n(*result, result_len + 1);
-    /*result_len = */func(cm, result, result_len, string, string_len, &status);
-    result[result_len] = '\0';
+    utf8_fullcase(&result, &result_len, string, string_len, locale, ct, &status);
+    CHECK_STATUS(status, "full case mapping failed");
     RETVAL_STRINGL(result, result_len, FALSE);
 
     if (FALSE) {
 end:
+        if (NULL != result) {
+            efree(result);
+        }
         RETVAL_FALSE;
     }
-    if (NULL != cm) {
-        ucasemap_close(cm);
-    }
-#endif /* UTF16_AS_INTERNAL */
 }
 
 PHP_FUNCTION(utf8_toupper)
 {
-#ifdef UTF16_AS_INTERNAL
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToUpper);
-#else
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, (func_full_case_mapping_t) ucasemap_utf8ToUpper);
-#endif /* UTF16_AS_INTERNAL */
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, UCASE_UPPER);
 }
 
 PHP_FUNCTION(utf8_tolower)
 {
-#ifdef UTF16_AS_INTERNAL
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToLower);
-#else
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, (func_full_case_mapping_t)ucasemap_utf8ToLower);
-#endif /* UTF16_AS_INTERNAL */
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, UCASE_LOWER);
 }
 
 PHP_FUNCTION(utf8_totitle)
 {
-#ifdef UTF16_AS_INTERNAL
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_strToTitleWithoutBI);
-#else
-    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, ucasemap_utf8ToTitle);
-#endif /* UTF16_AS_INTERNAL */
+    fullcasemapping(INTERNAL_FUNCTION_PARAM_PASSTHRU, UCASE_TITLE);
 }
 
 static void ncasecmp(INTERNAL_FUNCTION_PARAMETERS, int ncmpbehave)
@@ -629,7 +567,28 @@ end:
 
 PHP_FUNCTION(utf8_casecmp)
 {
+#if 0
     ncasecmp(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE);
+#else
+    int ret;
+    char *string1 = NULL;
+    int string1_len = 0;
+    char *string2 = NULL;
+    int string2_len = 0;
+    UErrorCode status = U_ZERO_ERROR;
+
+    intl_error_reset(NULL TSRMLS_CC);
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &string1, &string1_len, &string2, &string2_len)) {
+        return;
+    }
+    ret = utf8_region_matches(string1, string1_len, 0, string2, string2_len, 0, -1, "" /* locale */, UNORM_NFKC, UCASE_FOLD, &status);
+    if (U_FAILURE(status)) {
+        intl_error_set_code(NULL, status TSRMLS_CC);
+        RETURN_FALSE;
+    } else {
+        RETURN_LONG((long) ret);
+    }
+#endif /* 0 */
 }
 
 PHP_FUNCTION(utf8_ncasecmp) // TODO: tests
@@ -692,6 +651,7 @@ PHP_FUNCTION(utf8_reverse)
     RETVAL_STRINGL(result, string_len, FALSE);
 }
 
+// TODO: remove ?
 static inline char *memrnstr(char *haystack, char *needle, int needle_len, char *end)
 {
     char *p;
@@ -723,6 +683,7 @@ static inline char *memrnstr(char *haystack, char *needle, int needle_len, char 
     return NULL;
 }
 
+// TODO: use utf8_find ?
 static void find_case_sensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want_only_pos)
 {
     char *haystack = NULL;
