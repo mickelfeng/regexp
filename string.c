@@ -304,7 +304,7 @@ PHP_FUNCTION(utf8_ord)
 #endif /* UTF16_AS_INTERNAL */
 
     intl_error_reset(NULL TSRMLS_CC);
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl", &string, &string_len, &cp_offset)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &string, &string_len, &cp_offset)) {
         return;
     }
 #ifdef UTF16_AS_INTERNAL

@@ -10,7 +10,7 @@ $A="\xF0\x9D\x98\xBC"; # 1D63C, Lu
 $B="\xF0\x9D\x98\xBD";
 $C="\xF0\x9D\x98\xBE";
 
-var_dump(utf8_ord($A));
+var_dump(utf8_ord());
 echo "\n";
 var_dump(utf8_ord($A, 3, NULL));
 echo "\n";
@@ -21,11 +21,11 @@ var_dump(utf8_ord("$A$B$C", 3));
 var_dump(utf8_ord("$A$B$C", -4));
 ?>
 --EXPECTF--
-Warning: utf8_ord() expects exactly 2 parameters, 1 given in %s on line %d
+Warning: utf8_ord() expects at least 1 parameter, 0 given in %s on line %d
 NULL
 
 
-Warning: utf8_ord() expects exactly 2 parameters, 3 given in %s on line %d
+Warning: utf8_ord() expects at most 2 parameters, 3 given in %s on line %d
 NULL
 
 int(120381)

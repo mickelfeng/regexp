@@ -51,7 +51,7 @@ if (extension_loaded('mbstring')) {
 // May be hard to rewrite an equivalent of utf8_count_chars and utf8_ord
 // We will avoid to rewrite them in pure PHP in order to not introduce bugs
 $res = utf8_count_chars(utf8_shuffle($input), 1);
-$expected = array_fill_keys(array_map(function ($v) { return utf8_ord($v, 0); }, utf8_str_split($input)), 1);
+$expected = array_fill_keys(array_map('utf8_ord', utf8_str_split($input)), 1);
 ksort($res);
 ksort($expected);
 
