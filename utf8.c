@@ -47,20 +47,20 @@ int utf8_cp_to_cu(const char *string, int string_len, int32_t cp_offset, int32_t
         if (cp_offset < 0) {
             if (cp_offset < -_cp_count) {
                 *status = U_INDEX_OUTOFBOUNDS_ERROR;
-                return FAILURE;
+                return FALSE;
             }
             *cu_offset = string_len;
             U8_BACK_N((const uint8_t *) string, 0, *cu_offset, -cp_offset);
         } else {
             if (cp_offset >= _cp_count) {
                 *status = U_INDEX_OUTOFBOUNDS_ERROR;
-                return FAILURE;
+                return FALSE;
             }
             U8_FWD_N(string, *cu_offset, string_len, cp_offset);
         }
     }
 
-    return SUCCESS;
+    return TRUE;
 }
 
 void utf8_foldcase(char **target, int32_t *target_len, const char *src, int src_len, UErrorCode *status)
@@ -122,17 +122,18 @@ char *utf8_find( /* /!\ may be changed in the future /!\ */
     UNormalizationMode nm, UCaseType ct, /* /!\ may be removed for a default/specific value (ICU ones) /!\ */
     UErrorCode *status
 ) {
+    int32_t start_cu_offset = 0;
+
     *status = U_ZERO_ERROR;
+    if (!utf8_cp_to_cu(haystack, haystack_len, start_cp_offset, &start_cu_offset, status)) {
+        return NULL;
+    }
     if (UNORM_NONE == nm) { // it is possible to directly work in UTF-8
         char *found;
         char *cased_haystack, *cased_needle;
-        int32_t start_cu_offset;
         int32_t cased_haystack_len, cased_needle_len;
 
         found = cased_haystack = cased_needle = NULL;
-        if (!utf8_cp_to_cu(haystack, haystack_len, start_cp_offset, &start_cu_offset, status)) {
-            return NULL;
-        }
         // TODO: ne convertir que la partie où la recherche a lieu
         utf8_fullcase(&cased_haystack, &cased_haystack_len, haystack, haystack_len, locale, ct, status);
         if (U_FAILURE(*status)) {
@@ -205,14 +206,6 @@ char *utf8_find( /* /!\ may be changed in the future /!\ */
     return NULL;
 }
 
-// longueur/position + décomposition = kaboum ?
-
-/*enum {
-    LESSER  = -1,
-    EQUAL   = 0,
-    GREATER = 1
-};*/
-
 /**
  * Helper for strn?(?:case)?cmp
  * --
@@ -223,6 +216,8 @@ char *utf8_find( /* /!\ may be changed in the future /!\ */
  * --
  * Caller should:
  * - handle/set ICU error
+ * - check for status/error before considering return value
+ * - check match_length >= 0
  **/
 int utf8_region_matches( /* /!\ may be changed in the future /!\ */
     const char *string1, int32_t string1_len, int32_t string1_offset, /* length and offset in CP */
@@ -233,19 +228,27 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
     UErrorCode *status
 ) {
     int ret = 0;
-    int32_t string1_cu_offset = 0;
-    int32_t string2_cu_offset = 0;
+    int32_t string1_start_cu_offset;
+    int32_t string2_start_cu_offset;
+    int32_t string1_end_cu_offset;
+    int32_t string2_end_cu_offset;
 
     *status = U_ZERO_ERROR;
-    if (string1_offset != 0) {
-        if (!utf8_cp_to_cu(string1, string1_len, string1_offset, &string1_cu_offset, status)) {
-            return 0; /* caller should consider status first */
-        }
+    string1_start_cu_offset = string2_start_cu_offset = 0;
+    if (!utf8_cp_to_cu(string1, string1_len, string1_offset, &string1_start_cu_offset, status)) {
+        return 0;
     }
-    if (string2_offset != 0) {
-        if (!utf8_cp_to_cu(string2, string2_len, string2_offset, &string2_cu_offset, status)) {
-            return 0; /* caller should consider status first */
-        }
+    if (!utf8_cp_to_cu(string2, string2_len, string2_offset, &string2_start_cu_offset, status)) {
+        return 0;
+    }
+    if (match_length < 0) {
+        string1_end_cu_offset = string1_len;
+        string2_end_cu_offset = string2_len;
+    } else {
+        string1_end_cu_offset = string1_start_cu_offset;
+        U8_FWD_N(string1 + string1_start_cu_offset, string1_end_cu_offset, string1_len, match_length);
+        string2_end_cu_offset = string2_start_cu_offset;
+        U8_FWD_N(string2 + string2_start_cu_offset, string2_end_cu_offset, string2_len, match_length);
     }
     if (UNORM_NONE == nm) {
         char *cased_string1 = NULL;
@@ -255,16 +258,16 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
         int32_t substring1_len;
         int32_t substring2_len;
 
-        utf8_fullcase(&cased_string1, &cased_string1_len, string1 + string1_offset, string1_len - string1_offset, locale, ct, status);
+        utf8_fullcase(&cased_string1, &cased_string1_len, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset, locale, ct, status);
         if (U_FAILURE(*status)) {
             if (UCASE_NONE != ct) {
                 if (NULL != cased_string1) {
                     efree(cased_string1);
                 }
             }
-            return 0; /* caller should consider status first */
+            return 0;
         }
-        utf8_fullcase(&cased_string2, &cased_string2_len, string2 + string2_offset, string2_len - string2_offset, locale, ct, status);
+        utf8_fullcase(&cased_string2, &cased_string2_len, string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset, locale, ct, status);
         if (U_FAILURE(*status)) {
             if (UCASE_NONE != ct) {
                 if (NULL != cased_string1) {
@@ -274,12 +277,21 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
                     efree(cased_string2);
                 }
             }
-            return 0; /* caller should consider status first */
+            return 0;
         }
-        substring1_len = u8_countChar32((const uint8_t *) string1 + string1_offset, string1_len - string1_offset);
-        substring2_len = u8_countChar32((const uint8_t *) string2 + string2_offset, string2_len - string2_offset);
-        // TODO: binary utf8 comparaison
-        // ret = ?
+        substring1_len = u8_countChar32((const uint8_t *) string1 + string1_start_cu_offset, string1_len - string1_start_cu_offset);
+        substring2_len = u8_countChar32((const uint8_t *) string2 + string2_start_cu_offset, string2_len - string2_start_cu_offset);
+        // TODO: binary utf8 comparison
+        debug("NOT (YET) IMPLEMENTED");
+        // ret = XXX(); ?
+        if (UCASE_NONE != ct) {
+            if (NULL != cased_string1) {
+                efree(cased_string1);
+            }
+            if (NULL != cased_string2) {
+                efree(cased_string2);
+            }
+        }
     } else {
         // ct (Case Type) et nm (Normalization Mode) ignored
         UChar *usubstring1 = NULL;
@@ -287,16 +299,16 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
         int32_t usubstring1_len = 0;
         int32_t usubstring2_len = 0;
 
-// debug("%.*s", string1_len - string1_cu_offset, string1);
-// debug("%.*s", string2_len - string2_cu_offset, string2);
-        intl_convert_utf8_to_utf16(&usubstring1, &usubstring1_len, string1 + string1_cu_offset, string1_len - string1_cu_offset, status);
+// debug("%.*s", string1_end_cu_offset - string1_start_cu_offset, string1 + string1_start_cu_offset);
+// debug("%.*s", string2_end_cu_offset - string2_start_cu_offset, string2 + string1_start_cu_offset);
+        intl_convert_utf8_to_utf16(&usubstring1, &usubstring1_len, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset, status);
         if (U_FAILURE(*status)) {
             if (NULL != usubstring1) {
                 efree(usubstring1);
             }
-            return 0; /* caller should consider status first */
+            return 0;
         }
-        intl_convert_utf8_to_utf16(&usubstring2, &usubstring2_len, string2 + string2_cu_offset, string2_len - string2_cu_offset, status);
+        intl_convert_utf8_to_utf16(&usubstring2, &usubstring2_len, string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset, status);
         if (U_FAILURE(*status)) {
             if (NULL != usubstring1) {
                 efree(usubstring1);
@@ -304,12 +316,10 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
             if (NULL != usubstring2) {
                 efree(usubstring2);
             }
-            return 0; /* caller should consider status first */
+            return 0;
         }
-        // TODO: handle match_length (here or before ?)
-        // TODO: case insensitive use case folding
         ret = unorm_compare(usubstring1, usubstring1_len, usubstring2, usubstring2_len, UCASE_NONE == ct ? U_FOLD_CASE_DEFAULT : U_COMPARE_IGNORE_CASE, status);
-        // we don't need to check *status here
+        // we don't need to check *status here: same case
         if (NULL != usubstring1) {
             efree(usubstring1);
         }
