@@ -487,6 +487,85 @@ PHP_FUNCTION(utf8_ncmp)
     cmp(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, TRUE);
 }
 
+PHP_FUNCTION(utf8_slice_cmp)
+{
+    // TODO:
+    // substr_compare equivalent
+    // PHP interface to utf8_region_matches
+}
+
+PHP_FUNCTION(utf8_startswith)
+{
+    int ret;
+    char *string = NULL;
+    int string_len = 0;
+    char *substring = NULL;
+    int substring_len = 0;
+    int32_t string_cp_count;
+    int32_t substring_cp_count;
+    zend_bool ignore_case = FALSE;
+    UErrorCode status = U_ZERO_ERROR;
+
+    intl_error_reset(NULL TSRMLS_CC);
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|b", &string, &string_len, &substring, &substring_len, &ignore_case)) {
+        return;
+    }
+    string_cp_count = u8_countChar32((const uint8_t *) string, string_len);
+    substring_cp_count = u8_countChar32((const uint8_t *) substring, substring_len);
+    if (substring_cp_count > string_cp_count) {
+        RETURN_FALSE;
+    }
+    ret = utf8_region_matches(
+        string, string_len, 0,
+        substring, substring_len, 0,
+        substring_cp_count,
+        "" /* locale */, UNORM_NFD /* unused */, ignore_case ? UCASE_FOLD : UCASE_NONE /* unused */,
+        &status
+    );
+    intl_error_set_code(NULL, status TSRMLS_CC);
+    if (U_FAILURE(status)) {
+        RETURN_FALSE;
+    } else {
+        RETURN_BOOL(0 == ret);
+    }
+}
+
+PHP_FUNCTION(utf8_endswith)
+{
+    int ret;
+    char *string = NULL;
+    int string_len = 0;
+    char *substring = NULL;
+    int substring_len = 0;
+    int32_t string_cp_count;
+    int32_t substring_cp_count;
+    zend_bool ignore_case = FALSE;
+    UErrorCode status = U_ZERO_ERROR;
+
+    intl_error_reset(NULL TSRMLS_CC);
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|b", &string, &string_len, &substring, &substring_len, &ignore_case)) {
+        return;
+    }
+    string_cp_count = u8_countChar32((const uint8_t *) string, string_len);
+    substring_cp_count = u8_countChar32((const uint8_t *) substring, substring_len);
+    if (substring_cp_count > string_cp_count) {
+        RETURN_FALSE;
+    }
+    ret = utf8_region_matches(
+        string, string_len, -substring_cp_count,
+        substring, substring_len, 0,
+        substring_cp_count,
+        "" /* locale */, UNORM_NFD /* unused */, ignore_case ? UCASE_FOLD : UCASE_NONE /* unused */,
+        &status
+    );
+    intl_error_set_code(NULL, status TSRMLS_CC);
+    if (U_FAILURE(status)) {
+        RETURN_FALSE;
+    } else {
+        RETURN_BOOL(0 == ret);
+    }
+}
+
 PHP_FUNCTION(utf8_reverse)
 {
     char *string = NULL;
@@ -512,7 +591,6 @@ PHP_FUNCTION(utf8_reverse)
 }
 
 #if 1
-// TODO: remove ?
 static inline char *memrnstr(char *haystack, char *needle, int needle_len, char *end)
 {
     char *p;
@@ -544,7 +622,6 @@ static inline char *memrnstr(char *haystack, char *needle, int needle_len, char 
     return NULL;
 }
 
-// TODO: use utf8_find ?
 static void find_case_sensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want_only_pos)
 {
     char *haystack = NULL;
@@ -638,9 +715,7 @@ PHP_FUNCTION(utf8_lastpos)
 {
     find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, TRUE);
 }
-
 #else
-
 static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int want_only_pos*/)
 {
     char *found;
@@ -901,11 +976,6 @@ PHP_FUNCTION(utf8_shuffle)
  **/
 
 /**
- * RENAME:
- * - X => Y
- **/
-
-/**
  * locale support on case folding ?
  **/
 
@@ -937,7 +1007,10 @@ PHP_FUNCTION(utf8_shuffle)
  * strrchr => utf8_lastsub (TODO: rename ?)
  **/
 
-// add: startswith, endswith (version cs and ci)
+/**
+ * Make comparisons highly customable for fast/full, cs/ci by optionnal flags (of constants)
+ * eg : utf8_lindex($string, $substring, UTF8_IGNORE_CASE | UTF8_FULL_CMP)
+ **/
 
 // stri[r?pos|r?chr] : rewrite (depends on locale support with case folding)
 
@@ -950,7 +1023,7 @@ PHP_FUNCTION(utf8_shuffle)
 // str_ireplace : rewrite
 // strnatcasecmp, strnatcmp : use collations?
 // strncasecmp, strcasecmp : rewrite (2 versions : with case folding and full/locale?)
-// substr_compare, substr_replace, substr_count : rewrite (offsets)
+// substr_replace, substr_count : rewrite (offsets)
 // ucfirst, lcfirst : no sense ?
 // wordwrap : ?
 // *printf : rewrite

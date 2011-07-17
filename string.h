@@ -15,6 +15,8 @@ PHP_FUNCTION(utf8_slice);
 PHP_FUNCTION(utf8_ncmp);
 PHP_FUNCTION(utf8_ncasecmp);
 PHP_FUNCTION(utf8_casecmp);
+PHP_FUNCTION(utf8_startswith);
+PHP_FUNCTION(utf8_endswith);
 
 PHP_FUNCTION(utf8_toupper);
 PHP_FUNCTION(utf8_tolower);

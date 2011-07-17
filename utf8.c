@@ -220,8 +220,8 @@ char *utf8_find( /* /!\ may be changed in the future /!\ */
  * - check match_length >= 0
  **/
 int utf8_region_matches( /* /!\ may be changed in the future /!\ */
-    const char *string1, int32_t string1_len, int32_t string1_offset, /* length and offset in CP */
-    const char *string2, int32_t string2_len, int32_t string2_offset, /* length and offset in CP */
+    const char *string1, int32_t string1_len, int32_t string1_offset, /* length in CU ; offset in CP */
+    const char *string2, int32_t string2_len, int32_t string2_offset, /* length in CU ; offset in CP */
     int32_t match_length,                                             /* length in CP, < 0 for all string (str(?:case)?cmp behavior) */
     const char *locale,
     UNormalizationMode nm, UCaseType ct, /* /!\ may be removed for a default/specific value (ICU ones) /!\ */
@@ -245,10 +245,20 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
         string1_end_cu_offset = string1_len;
         string2_end_cu_offset = string2_len;
     } else {
-        string1_end_cu_offset = string1_start_cu_offset;
-        U8_FWD_N(string1 + string1_start_cu_offset, string1_end_cu_offset, string1_len, match_length);
-        string2_end_cu_offset = string2_start_cu_offset;
-        U8_FWD_N(string2 + string2_start_cu_offset, string2_end_cu_offset, string2_len, match_length);
+        if (string1_offset >= 0) {
+            string1_end_cu_offset = string1_start_cu_offset;
+            U8_FWD_N(string1 + string1_start_cu_offset, string1_end_cu_offset, string1_len, match_length);
+        } else /*if (string1_offset < 0)*/ {
+            string1_end_cu_offset = string1_len;
+            U8_BACK_N(string1, string1_start_cu_offset, string1_len, match_length);
+        }
+        if (string2_offset >= 0) {
+            string2_end_cu_offset = string2_start_cu_offset;
+            U8_FWD_N(string2 + string2_start_cu_offset, string2_end_cu_offset, string2_len, match_length);
+        } else /*if (string1_offset < 0)*/ {
+            string1_end_cu_offset = string1_len;
+            U8_BACK_N(string2, string2_start_cu_offset, string2_len, match_length);
+        }
     }
     if (UNORM_NONE == nm) {
         char *cased_string1 = NULL;
@@ -282,8 +292,7 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
         substring1_len = u8_countChar32((const uint8_t *) string1 + string1_start_cu_offset, string1_len - string1_start_cu_offset);
         substring2_len = u8_countChar32((const uint8_t *) string2 + string2_start_cu_offset, string2_len - string2_start_cu_offset);
         // TODO: binary utf8 comparison
-        debug("NOT (YET) IMPLEMENTED");
-        // ret = XXX(); ?
+        //ret = memcmp(string1, string2, LENGTH);
         if (UCASE_NONE != ct) {
             if (NULL != cased_string1) {
                 efree(cased_string1);
@@ -299,8 +308,9 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
         int32_t usubstring1_len = 0;
         int32_t usubstring2_len = 0;
 
-// debug("%.*s", string1_end_cu_offset - string1_start_cu_offset, string1 + string1_start_cu_offset);
-// debug("%.*s", string2_end_cu_offset - string2_start_cu_offset, string2 + string1_start_cu_offset);
+// debug("(sub)string1 = %.*s (%d)\n", string1_end_cu_offset - string1_start_cu_offset, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset);
+// debug("(sub)string2 = %.*s (%d)\n", string2_end_cu_offset - string2_start_cu_offset, string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset);
+        // TODO: make a binary comparison first to avoid potential uneeded conversions/normalizations ?
         intl_convert_utf8_to_utf16(&usubstring1, &usubstring1_len, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset, status);
         if (U_FAILURE(*status)) {
             if (NULL != usubstring1) {
@@ -318,6 +328,8 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
             }
             return 0;
         }
+// debug("usubstring1 = %.*S (%d)", usubstring1_len, usubstring1, usubstring1_len);
+// debug("usubstring2 = %.*S (%d)", usubstring2_len, usubstring2, usubstring2_len);
         ret = unorm_compare(usubstring1, usubstring1_len, usubstring2, usubstring2_len, UCASE_NONE == ct ? U_FOLD_CASE_DEFAULT : U_COMPARE_IGNORE_CASE, status);
         // we don't need to check *status here: same case
         if (NULL != usubstring1) {
