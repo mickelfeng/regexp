@@ -8,6 +8,7 @@ PHP_FE(utf8_count_words, arginfo_count_words)
 PHP_FE(utf8_count_chars, arginfo_count_chars)
 PHP_FE(utf8_split, arginfo_split)
 PHP_FE(utf8_slice, arginfo_slice)
+PHP_FE(utf8_slice_cmp, arginfo_slice_cmp)
 
 PHP_FE(utf8_casecmp, arginfo_casecmp)
 PHP_FE(utf8_ncmp, arginfo_ncmp)

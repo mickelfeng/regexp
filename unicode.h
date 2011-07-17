@@ -18,7 +18,7 @@ static const inline char *ubasename(const char *filename)
 
 #  define debug(format, ...) \
     do {                                                                                                           \
-        UFILE *ustderr = u_finit(stdout, NULL, NULL);                                                              \
+        UFILE *ustderr = u_finit(stderr, NULL, NULL);                                                              \
         u_fprintf(ustderr, "%s:%d:" format " in %s()\n", ubasename(__FILE__), __LINE__, ## __VA_ARGS__, __func__); \
     } while (0);
 # else

@@ -245,20 +245,12 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
         string1_end_cu_offset = string1_len;
         string2_end_cu_offset = string2_len;
     } else {
-        if (string1_offset >= 0) {
-            string1_end_cu_offset = string1_start_cu_offset;
-            U8_FWD_N(string1 + string1_start_cu_offset, string1_end_cu_offset, string1_len, match_length);
-        } else /*if (string1_offset < 0)*/ {
-            string1_end_cu_offset = string1_len;
-            U8_BACK_N(string1, string1_start_cu_offset, string1_len, match_length);
-        }
-        if (string2_offset >= 0) {
-            string2_end_cu_offset = string2_start_cu_offset;
-            U8_FWD_N(string2 + string2_start_cu_offset, string2_end_cu_offset, string2_len, match_length);
-        } else /*if (string1_offset < 0)*/ {
-            string1_end_cu_offset = string1_len;
-            U8_BACK_N(string2, string2_start_cu_offset, string2_len, match_length);
-        }
+        string1_end_cu_offset = string1_start_cu_offset;
+        U8_FWD_N(string1, string1_end_cu_offset, string1_len, match_length);
+        string2_end_cu_offset = string2_start_cu_offset;
+        U8_FWD_N(string2, string2_end_cu_offset, string2_len, match_length);
+// debug("string1_start_cu_offset = %d, string1_end_cu_offset = %d", string1_start_cu_offset, string1_end_cu_offset);
+// debug("string2_start_cu_offset = %d, string2_end_cu_offset = %d", string2_start_cu_offset, string2_end_cu_offset);
     }
     if (UNORM_NONE == nm) {
         char *cased_string1 = NULL;
@@ -308,8 +300,8 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
         int32_t usubstring1_len = 0;
         int32_t usubstring2_len = 0;
 
-// debug("(sub)string1 = %.*s (%d)\n", string1_end_cu_offset - string1_start_cu_offset, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset);
-// debug("(sub)string2 = %.*s (%d)\n", string2_end_cu_offset - string2_start_cu_offset, string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset);
+// debug("(sub)string1 = %*s (%d)\n", string1_end_cu_offset - string1_start_cu_offset, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset);
+// debug("(sub)string2 = %*s (%d)\n", string2_end_cu_offset - string2_start_cu_offset, string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset);
         // TODO: make a binary comparison first to avoid potential uneeded conversions/normalizations ?
         intl_convert_utf8_to_utf16(&usubstring1, &usubstring1_len, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset, status);
         if (U_FAILURE(*status)) {

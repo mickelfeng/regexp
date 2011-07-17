@@ -11,6 +11,7 @@ PHP_FUNCTION(utf8_count_words);
 PHP_FUNCTION(utf8_count_chars);
 PHP_FUNCTION(utf8_split);
 PHP_FUNCTION(utf8_slice);
+PHP_FUNCTION(utf8_slice_cmp);
 
 PHP_FUNCTION(utf8_ncmp);
 PHP_FUNCTION(utf8_ncasecmp);

@@ -487,14 +487,46 @@ PHP_FUNCTION(utf8_ncmp)
     cmp(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, TRUE);
 }
 
-PHP_FUNCTION(utf8_slice_cmp)
+PHP_FUNCTION(utf8_slice_cmp) // TODO: tests
 {
-    // TODO:
-    // substr_compare equivalent
-    // PHP interface to utf8_region_matches
+    int ret;
+    char *string = NULL;
+    int string_len = 0;
+    long string_cp_offset = 0;
+    char *substring = NULL;
+    int substring_len = 0;
+    long substring_cp_offset = 0;
+    long cp_length = -1;
+    int32_t string_cp_count;
+    int32_t substring_cp_count;
+    zend_bool ignore_case = FALSE;
+    UErrorCode status = U_ZERO_ERROR;
+
+    intl_error_reset(NULL TSRMLS_CC);
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sls|llb", &string, &string_len, &string_cp_offset, &substring, &substring_len, &substring_cp_offset, &cp_length, &ignore_case)) {
+        return;
+    }
+    if (cp_length < 0) {
+        string_cp_count = u8_countChar32((const uint8_t *) string, string_len);
+        substring_cp_count = u8_countChar32((const uint8_t *) substring, substring_len);
+        cp_length = MIN(string_cp_count, substring_cp_count);
+    }
+    ret = utf8_region_matches(
+        string, string_len, string_cp_offset,
+        substring, substring_len, substring_cp_offset,
+        cp_length,
+        "" /* locale */, UNORM_NFD /* unused */, ignore_case ? UCASE_FOLD : UCASE_NONE /* unused */,
+        &status
+    );
+    intl_error_set_code(NULL, status TSRMLS_CC);
+    if (U_FAILURE(status)) {
+        RETURN_FALSE;
+    } else {
+        RETURN_LONG((long) ret);
+    }
 }
 
-PHP_FUNCTION(utf8_startswith)
+PHP_FUNCTION(utf8_startswith) // TODO: tests
 {
     int ret;
     char *string = NULL;
@@ -530,7 +562,7 @@ PHP_FUNCTION(utf8_startswith)
     }
 }
 
-PHP_FUNCTION(utf8_endswith)
+PHP_FUNCTION(utf8_endswith) // TODO: tests
 {
     int ret;
     char *string = NULL;
@@ -792,7 +824,7 @@ PHP_FUNCTION(utf8_rfind)
 }
 #endif
 
-PHP_FUNCTION(utf8_tr) // TODO: tests
+PHP_FUNCTION(utf8_tr)
 {
     HashTable map;
     char *string = NULL;
@@ -977,12 +1009,14 @@ PHP_FUNCTION(utf8_shuffle)
 
 /**
  * locale support on case folding ?
+ * Length have more sense with a NFC normalization ?
  **/
 
 /**
  * Equivalents :
  *
  * substr => utf8_slice
+ * substr_cmp => utf8_slice_cmp
  * strtolower => utf8_tolower
  * strtoupper => utf8_toupper
  * ucwords => utf8_totitle (not strictly, others chars are lowered)
@@ -991,7 +1025,7 @@ PHP_FUNCTION(utf8_shuffle)
  * rtrim => utf8_rtrim (TODO: tests)
  * chr => utf8_chr
  * ord => utf8_ord
- * strtr => utf8_tr (TODO: tests)
+ * strtr => utf8_tr
  * str_shuffle => utf8_shuffle
  * str_reverse => utf8_reverse
  * str_split => utf8_split
