@@ -4,6 +4,7 @@
 
 # ifdef ZEND_DEBUG
 #  include <php.h>
+#  include <unicode/ustdio.h>
 static const inline char *ubasename(const char *filename)
 {
     const char *c;
@@ -16,7 +17,10 @@ static const inline char *ubasename(const char *filename)
 }
 
 #  define debug(format, ...) \
-    zend_output_debug_string(0, "%s:%d:" format " in %s()\n", ubasename(__FILE__), __LINE__, ## __VA_ARGS__, __func__)
+    do {                                                                                                           \
+        UFILE *ustderr = u_finit(stdout, NULL, NULL);                                                              \
+        u_fprintf(ustderr, "%s:%d:" format " in %s()\n", ubasename(__FILE__), __LINE__, ## __VA_ARGS__, __func__); \
+    } while (0);
 # else
 #  define debug(format, ...)
 # endif /* ZEND_DEBUG */
