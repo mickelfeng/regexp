@@ -6,6 +6,7 @@
 #include "php_intl.h"
 #include "intl_error.h"
 #include <unicode/ustring.h>
+#include <unicode/unorm.h>
 #include "unicode.h"
 #include "utf16.h"
 
@@ -35,4 +36,32 @@ int utf16_cp_to_cu(const UChar *ustring, int32_t ustring_len, long cp_offset, in
     }
 
     return SUCCESS;
+}
+
+void utf16_normalize(UChar **target, int32_t *target_len, const UChar *src, int32_t src_len, UNormalizationMode nm, UErrorCode *status)
+{
+    *status = U_ZERO_ERROR;
+    if (nm < UNORM_NONE || nm >= UNORM_MODE_COUNT) {
+        *status = U_ILLEGAL_ARGUMENT_ERROR;
+        return;
+    }
+    if (UNORM_NONE == nm) {
+        *target = (UChar *) src;
+        *target_len = src_len;
+        return;
+    }
+    *target_len = unorm_normalize(src, src_len, nm, 0, NULL, 0, status);
+    if (U_BUFFER_OVERFLOW_ERROR != *status) {
+        return;
+    }
+    *status = U_ZERO_ERROR;
+    *target = mem_new_n(**target, *target_len + 1);
+    /* *target_len = */unorm_normalize(src, src_len, nm, target_len, *target, 0, status);
+    if (U_FAILURE(*status)) {
+        efree(*target);
+        *target = NULL;
+        *target_len = 0;
+    } else {
+        *(*target + *target_len) = '\0';
+    }
 }
