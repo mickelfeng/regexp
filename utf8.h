@@ -7,7 +7,8 @@ typedef struct {
     char cus[U8_MAX_LENGTH + 1];
 } U8ReplacementCharData;
 
-int32_t u8_countChar32(const uint8_t *, int32_t);
+int32_t utf8_countChar32(const uint8_t *, int32_t);
+UBool utf8_validate(const uint8_t *, int32_t, UErrorCode *);
 int utf8_cp_to_cu(const char *, int, int32_t, int32_t *, UErrorCode *status);
 void utf8_add_cp_replacement(HashTable *, UChar32, const char *, int32_t);
 void utf8_foldcase(char **, int32_t *, const char *, int, UErrorCode *);

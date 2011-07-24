@@ -66,7 +66,7 @@
 #define UTF8_CP_TO_CU(string, string_len, cp_offset, cu_offset)                                               \
     do {                                                                                                      \
         if (0 != cp_offset) {                                                                                 \
-            int32_t count_cp = u8_countChar32((const uint8_t *) string, string_len);                          \
+            int32_t count_cp = utf8_countChar32((const uint8_t *) string, string_len);                        \
             if (cp_offset < 0) {                                                                              \
                 if (cp_offset < -count_cp) {                                                                  \
                     intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
@@ -269,7 +269,7 @@ PHP_FUNCTION(utf8_len)
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &string, &string_len)) {
         return;
     }
-    RETVAL_LONG((long) u8_countChar32((const uint8_t *) string, string_len));
+    RETVAL_LONG((long) utf8_countChar32((const uint8_t *) string, string_len));
 }
 
 PHP_FUNCTION(utf8_ord)
@@ -487,7 +487,7 @@ PHP_FUNCTION(utf8_ncmp)
     cmp(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, TRUE);
 }
 
-PHP_FUNCTION(utf8_slice_cmp) // TODO: tests
+PHP_FUNCTION(utf8_slice_cmp)
 {
     int ret;
     char *string = NULL;
@@ -507,8 +507,8 @@ PHP_FUNCTION(utf8_slice_cmp) // TODO: tests
         return;
     }
     if (cp_length < 0) {
-        string_cp_count = u8_countChar32((const uint8_t *) string, string_len);
-        substring_cp_count = u8_countChar32((const uint8_t *) substring, substring_len);
+        string_cp_count = utf8_countChar32((const uint8_t *) string, string_len);
+        substring_cp_count = utf8_countChar32((const uint8_t *) substring, substring_len);
         cp_length = MIN(string_cp_count, substring_cp_count);
     }
     ret = utf8_region_matches(
@@ -542,8 +542,8 @@ PHP_FUNCTION(utf8_startswith) // TODO: tests
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|b", &string, &string_len, &substring, &substring_len, &ignore_case)) {
         return;
     }
-    string_cp_count = u8_countChar32((const uint8_t *) string, string_len);
-    substring_cp_count = u8_countChar32((const uint8_t *) substring, substring_len);
+    string_cp_count = utf8_countChar32((const uint8_t *) string, string_len);
+    substring_cp_count = utf8_countChar32((const uint8_t *) substring, substring_len);
     if (substring_cp_count > string_cp_count) {
         RETURN_FALSE;
     }
@@ -578,8 +578,8 @@ PHP_FUNCTION(utf8_endswith) // TODO: tests
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|b", &string, &string_len, &substring, &substring_len, &ignore_case)) {
         return;
     }
-    string_cp_count = u8_countChar32((const uint8_t *) string, string_len);
-    substring_cp_count = u8_countChar32((const uint8_t *) substring, substring_len);
+    string_cp_count = utf8_countChar32((const uint8_t *) string, string_len);
+    substring_cp_count = utf8_countChar32((const uint8_t *) substring, substring_len);
     if (substring_cp_count > string_cp_count) {
         RETURN_FALSE;
     }
@@ -709,7 +709,7 @@ static void find_case_sensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want
     }
     if (NULL != found) {
         if (want_only_pos) {
-            RETURN_LONG((long) u8_countChar32((const uint8_t *) haystack, found - haystack));
+            RETURN_LONG((long) utf8_countChar32((const uint8_t *) haystack, found - haystack));
         } else {
             if (before) {
                 RETURN_STRINGL(haystack, found - haystack, TRUE);
@@ -799,7 +799,7 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int wan
     if (NULL == found) {
         RETURN_LONG((long) -1);
     } else {
-        RETURN_LONG((long) u8_countChar32(haystack, found - haystack));
+        RETURN_LONG((long) utf8_countChar32(haystack, found - haystack));
     }
 }
 
@@ -844,7 +844,7 @@ PHP_FUNCTION(utf8_tr)
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss", &string, &string_len, &from, &from_len, &to, &to_len)) {
         return;
     }
-    zend_hash_init(&map, u8_countChar32((const uint8_t *) from, from_len), NULL, NULL, FALSE);
+    zend_hash_init(&map, utf8_countChar32((const uint8_t *) from, from_len), NULL, NULL, FALSE);
     for (f = p = t = 0; f < from_len && t < to_len; /* NOP */) {
         U8_NEXT(from, f, from_len, c);
         U8_FWD_1(to, t, to_len);
@@ -890,7 +890,7 @@ static void trim(INTERNAL_FUNCTION_PARAMETERS, int mode)
     if (NULL != what) {
         void *dummy = (void *) 1;
 
-        zend_hash_init(&filter, u8_countChar32((const uint8_t *) what, what_len), NULL, NULL, FALSE);
+        zend_hash_init(&filter, utf8_countChar32((const uint8_t *) what, what_len), NULL, NULL, FALSE);
         for (i = 0; i < what_len; /* NOP */) {
             U8_NEXT(what, i, what_len, c);
             zend_hash_index_update(&filter, c, &dummy, sizeof(void *), NULL);
@@ -968,7 +968,7 @@ PHP_FUNCTION(utf8_shuffle)
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &string, &string_len)) {
         return;
     }
-    cp_count = u8_countChar32((const uint8_t *) string, string_len);
+    cp_count = utf8_countChar32((const uint8_t *) string, string_len);
     if (cp_count <= 1) {
         RETURN_STRINGL(string, string_len, 1);
     }

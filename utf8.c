@@ -17,7 +17,78 @@
 #include "utf16.h"
 #include "utf8.h"
 
-int32_t u8_countChar32(const uint8_t *string, int32_t length)
+#define UTF8_3_4_IS_ILLEGAL(b) (((b) < 0x80) || ((b) > 0xBF))
+
+#undef I
+#undef R
+
+#define I -1 /* Illegal */
+#define R -2 /* Out of range */
+
+static const int8_t utf8_count_bytes[256] = {
+    /*      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E, F */
+    /* 0 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    /* 1 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    /* 2 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    /* 3 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    /* 4 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    /* 5 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    /* 6 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    /* 7 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    /* 8 */ I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I,
+    /* 9 */ I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I,
+    /* A */ I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I,
+    /* B */ I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I,
+    /* C */ I, I, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    /* D */ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    /* E */ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    /* F */ 4, 4, 4, 4, R, R, R, R, R, R, R, R, R, R, R, R
+};
+
+#undef I
+#undef R
+
+static const uint8_t utf8_min_second_byte_value[256] = {
+    /*      0,    1,    2,    3,    4,    5,    6,    7,    8,    9,    A,    B,    C,    D,    E,    F */
+    /* 0 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 1 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 2 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 3 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 4 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 5 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 6 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 7 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 8 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 9 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* A */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* B */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* C */ 0x00, 0x00, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+    /* D */ 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+    /* E */ 0xA0, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+    /* F */ 0x90, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+static const uint8_t utf8_max_second_byte_value[256] = {
+    /*      0,    1,    2,    3,    4,    5,    6,    7,    8,    9,    A,    B,    C,    D,    E,    F */
+    /* 0 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 1 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 2 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 3 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 4 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 5 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 6 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 7 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 8 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 9 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* A */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* B */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* C */ 0x00, 0x00, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF,
+    /* D */ 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF,
+    /* E */ 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0xBF, 0x9F, 0xBF, 0xBF,
+    /* F */ 0xBF, 0xBF, 0xBF, 0xBF, 0x8F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+int32_t utf8_countChar32(const uint8_t *string, int32_t length)
 {
     int32_t cpcount, cucount;
 
@@ -26,24 +97,70 @@ int32_t u8_countChar32(const uint8_t *string, int32_t length)
     }
 
     cpcount = 0;
-    if (length >= 0) {
-        while (length > 0) {
-            cucount = U8_COUNT_TRAIL_BYTES(*string) + 1;
-            if (length >= cucount) {
-                string += cucount;
-                length -= cucount;
-                cpcount++;
-            }
+    while (length > 0) {
+        cucount = utf8_count_bytes[*string];
+        if (length >= cucount) {
+            string += cucount;
+            length -= cucount;
+            cpcount++;
         }
     }
 
     return cpcount;
 }
 
+UBool utf8_validate(const uint8_t *string, int32_t string_len, UErrorCode *status)
+{
+    int i;
+    uint8_t *end, *p;
+    int8_t cplen;
+
+    if (NULL == string) {
+        *status = U_ILLEGAL_ARGUMENT_ERROR;
+        return FALSE;
+    }
+
+    if (string_len < 0) {
+        *status = U_ILLEGAL_ARGUMENT_ERROR;
+        return FALSE;
+    }
+
+    p = (uint8_t *) string;
+    end = ((uint8_t *) string) + string_len;
+    while (p > end) {
+        cplen = utf8_count_bytes[*string];
+        if (cplen < 0 || cplen > U8_MAX_LENGTH) {
+            *status = U_ILLEGAL_CHAR_FOUND;
+            return FALSE;
+        }
+        if (end - p < cplen) {
+            *status = U_TRUNCATED_CHAR_FOUND;
+            return FALSE;
+        }
+        if (1 == cplen) {
+            p++;
+        } else {
+            if (p[1] < utf8_min_second_byte_value[*p] || p[1] > utf8_max_second_byte_value[*p]) {
+                *status = U_ILLEGAL_CHAR_FOUND;
+                return FALSE;
+            }
+            for (i = 2; i < cplen; i++) {
+                if (UTF8_3_4_IS_ILLEGAL(p[i])) {
+                    *status = U_ILLEGAL_CHAR_FOUND;
+                    return FALSE;
+                }
+            }
+            p += cplen;
+        }
+    }
+
+    return TRUE;
+}
+
 int utf8_cp_to_cu(const char *string, int string_len, int32_t cp_offset, int32_t *cu_offset, UErrorCode *status)
 {
     if (0 != cp_offset) {
-        int32_t _cp_count = u8_countChar32((const uint8_t *) string, string_len);
+        int32_t _cp_count = utf8_countChar32((const uint8_t *) string, string_len);
         if (cp_offset < 0) {
             if (cp_offset < -_cp_count) {
                 *status = U_INDEX_OUTOFBOUNDS_ERROR;
@@ -170,36 +287,76 @@ char *utf8_find( /* /!\ may be changed in the future /!\ */
         return found;
     } else { // impossible here, we need to work in UTF-16
         UChar *uhaystack = NULL;
-        UChar *uneedle = NULL;
         int32_t uhaystack_len = 0;
+        UChar *uneedle = NULL;
         int32_t uneedle_len = 0;
+        UChar *unormalized_haystack = NULL;
+        int32_t unormalized_haystack_len = 0;
+        UChar *unormalized_needle = NULL;
+        int32_t unormalized_needle_len = 0;
+        UChar *ucased_haystack = NULL;
+        int32_t ucased_haystack_len = 0;
+        UChar *ucased_needle = NULL;
+        int32_t ucased_needle_len = 0;
 
         // TODO: ne convertir que la partie où la recherche a lieu
         intl_convert_utf8_to_utf16(&uhaystack, &uhaystack_len, haystack, haystack_len, status);
-        if (U_FAILURE(status)) {
-            if (NULL != uhaystack) {
-                efree(uhaystack);
-            }
-            return NULL;
+        if (U_FAILURE(*status)) {
+            goto end;
         }
         // TODO: ne convertir que la partie où la recherche a lieu
         intl_convert_utf8_to_utf16(&uneedle, &uneedle_len, needle, needle_len, status);
-        if (U_FAILURE(status)) {
-            if (NULL != uhaystack) {
-                efree(uhaystack);
-            }
-            if (NULL != uneedle) {
-                efree(uneedle);
-            }
-            return NULL;
+        if (U_FAILURE(*status)) {
+            goto end;
         }
-        // normaliser, appliquer la casse, (re)normaliser, chercher
+        utf16_normalize(&unormalized_haystack, &unormalized_haystack_len, uhaystack, uhaystack_len, nm, status);
+        if (U_FAILURE(*status)) {
+            goto end;
+        }
+        efree(uhaystack); uhaystack = NULL; // we don't need it anymore
+        utf16_normalize(&unormalized_needle, &unormalized_needle_len, uneedle, uneedle_len, nm, status);
+        if (U_FAILURE(*status)) {
+            goto end;
+        }
+        efree(uneedle); uneedle = NULL; // we don't need it anymore
+
+        if (UCASE_NONE == ct) {
+            ucased_haystack = unormalized_haystack;
+            ucased_haystack_len = unormalized_haystack_len;
+            ucased_needle = unormalized_needle;
+            ucased_needle_len = unormalized_needle_len;
+        } else {
+            utf16_fullcase(&ucased_haystack, &ucased_haystack_len, unormalized_haystack, unormalized_haystack_len, locale, ct, status);
+            if (U_FAILURE(*status)) {
+                goto end;
+            }
+            efree(unormalized_haystack); unormalized_haystack = NULL; // we don't need it anymore
+            utf16_fullcase(&ucased_needle, &ucased_needle_len, unormalized_needle, unormalized_needle_len, locale, ct, status);
+            if (U_FAILURE(*status)) {
+                goto end;
+            }
+            efree(unormalized_needle); unormalized_needle = NULL; // we don't need it anymore
+        }
         // "recalculer" le pointeur UTF-16 => UTF-8
+
+end:
         if (NULL != uhaystack) {
             efree(uhaystack);
         }
         if (NULL != uneedle) {
             efree(uneedle);
+        }
+        if (NULL != unormalized_haystack) {
+            efree(unormalized_haystack);
+        }
+        if (NULL != unormalized_needle) {
+            efree(unormalized_needle);
+        }
+        if (NULL != ucased_haystack && UCASE_NONE != ct) {
+            efree(ucased_haystack);
+        }
+        if (NULL != ucased_needle && UCASE_NONE != ct) {
+            efree(ucased_needle);
         }
     }
 
@@ -281,8 +438,8 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
             }
             return 0;
         }
-        substring1_len = u8_countChar32((const uint8_t *) string1 + string1_start_cu_offset, string1_len - string1_start_cu_offset);
-        substring2_len = u8_countChar32((const uint8_t *) string2 + string2_start_cu_offset, string2_len - string2_start_cu_offset);
+        substring1_len = utf8_countChar32((const uint8_t *) string1 + string1_start_cu_offset, string1_len - string1_start_cu_offset);
+        substring2_len = utf8_countChar32((const uint8_t *) string2 + string2_start_cu_offset, string2_len - string2_start_cu_offset);
         // TODO: binary utf8 comparison
         //ret = memcmp(string1, string2, LENGTH);
         if (UCASE_NONE != ct) {
