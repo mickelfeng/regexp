@@ -82,3 +82,8 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_slice_cmp, 0, 0, 3)
     ZEND_ARG_INFO(0, length)
     ZEND_ARG_INFO(0, ignore_case)
 ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_validate, 0, 0, 1)
+    ZEND_ARG_INFO(0, string)
+    ZEND_ARG_INFO(0, quiet)
+ZEND_END_ARG_INFO()

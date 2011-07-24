@@ -36,4 +36,6 @@ PHP_FUNCTION(utf8_ltrim);
 
 PHP_FUNCTION(utf8_shuffle);
 
+PHP_FUNCTION(utf8_validate);
+
 #endif /* !INTL_STRING_H */

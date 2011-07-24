@@ -996,6 +996,28 @@ PHP_FUNCTION(utf8_shuffle)
     RETVAL_STRINGL(result, string_len, FALSE);
 }
 
+PHP_FUNCTION(utf8_validate) // TODO: tests
+{
+    UBool ret = FALSE;
+    char *string = NULL;
+    int string_len = 0;
+    zend_bool quiet = TRUE;
+    UErrorCode status = U_ZERO_ERROR;
+
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|b", &string, &string_len, &quiet)) {
+        return;
+    }
+    if (!quiet) {
+        intl_error_reset(NULL TSRMLS_CC);
+    }
+    ret = utf8_validate((const uint8_t *) string, string_len, &status);
+    if (!quiet) {
+        intl_error_set_code(NULL, status TSRMLS_CC);
+    }
+
+    RETURN_BOOL(ret);
+}
+
 /**
  * TEST:
  * - [lr]?trim
@@ -1005,6 +1027,7 @@ PHP_FUNCTION(utf8_shuffle)
  * - str
  * - count_chars
  * - word_count
+ * - validate
  **/
 
 /**
@@ -1042,8 +1065,10 @@ PHP_FUNCTION(utf8_shuffle)
  **/
 
 /**
- * Make comparisons highly customable for fast/full, cs/ci by optionnal flags (of constants)
+ * "Ideas":
+ * - Make comparisons highly customable for fast/full (normalization or not), cs/ci by optionnal flags (of constants)?
  * eg : utf8_lindex($string, $substring, UTF8_IGNORE_CASE | UTF8_FULL_CMP)
+ * - Pass strings by reference for normalization?
  **/
 
 // stri[r?pos|r?chr] : rewrite (depends on locale support with case folding)
