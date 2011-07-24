@@ -127,8 +127,8 @@ UBool utf8_validate(const uint8_t *string, int32_t string_len, UErrorCode *statu
 
     p = (uint8_t *) string;
     end = ((uint8_t *) string) + string_len;
-    while (p > end) {
-        cplen = utf8_count_bytes[*string];
+    while (end > p) {
+        cplen = utf8_count_bytes[*p];
         if (cplen < 0 || cplen > U8_MAX_LENGTH) {
             *status = U_ILLEGAL_CHAR_FOUND;
             return FALSE;
@@ -140,6 +140,10 @@ UBool utf8_validate(const uint8_t *string, int32_t string_len, UErrorCode *statu
         if (1 == cplen) {
             p++;
         } else {
+            /**
+             * TODO: (3.5) check non character code point [0xfdd0-0xfdef] + !0x*fff[e-f] + < 0x10ffff
+             * U_INVALID_CHAR_FOUND
+             **/
             if (p[1] < utf8_min_second_byte_value[*p] || p[1] > utf8_max_second_byte_value[*p]) {
                 *status = U_ILLEGAL_CHAR_FOUND;
                 return FALSE;
