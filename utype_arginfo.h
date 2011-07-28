@@ -1,0 +1,3 @@
+ZEND_BEGIN_ARG_INFO_EX(arginfo_isX, 0, 0, 1)
+    ZEND_ARG_INFO(0, string)
+ZEND_END_ARG_INFO()

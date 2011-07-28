@@ -1,0 +1,15 @@
+/* sed -n 's/^PHP_FUNCTION(\([^)]*\))/PHP_FE(\1, arginfo_isX)/p' utype.c */
+
+PHP_FE(utf8_isalpha, arginfo_isX)
+PHP_FE(utf8_istitle, arginfo_isX)
+PHP_FE(utf8_islower, arginfo_isX)
+PHP_FE(utf8_isupper, arginfo_isX)
+PHP_FE(utf8_ispunct, arginfo_isX)
+PHP_FE(utf8_isdigit, arginfo_isX)
+PHP_FE(utf8_ixdigit, arginfo_isX)
+PHP_FE(utf8_isalnum, arginfo_isX)
+PHP_FE(utf8_isspace, arginfo_isX)
+PHP_FE(utf8_isblank, arginfo_isX)
+PHP_FE(utf8_iscntrl, arginfo_isX)
+PHP_FE(utf8_isgraph, arginfo_isX)
+PHP_FE(utf8_isprint, arginfo_isX)
