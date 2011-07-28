@@ -39,12 +39,12 @@ function ut_regexp_create($oo)
     }
 }
 
-function ut_regexp_match($oo, $ro, $subject, &$matches, $flags = 0)
+function ut_regexp_match($oo, $ro, $subject, &$matches, $flags = 0, $start_offset = 0)
 {
     if ($oo) {
-        return call_user_func_array(array($ro, 'match'), array($subject, &$matches, $flags));
+        return call_user_func_array(array($ro, 'match'), array($subject, &$matches, $flags, $start_offset));
     } else {
-        return call_user_func_array('regexp_match', array($ro, $subject, &$matches, $flags));
+        return call_user_func_array('regexp_match', array($ro, $subject, &$matches, $flags, $start_offset));
     }
 }
 
