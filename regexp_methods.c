@@ -257,6 +257,10 @@ PHP_FUNCTION(regexp_match)
         intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_match: bad arguments", 0 TSRMLS_CC);
         RETURN_FALSE;
     }
+    if (NULL != subpats) {
+        zval_dtor(subpats);
+        array_init(subpats);
+    }
     if (0 != (flags & ~(OFFSET_CAPTURE))) {
         intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_match: invalid flag(s)", 0 TSRMLS_CC);
         RETURN_FALSE;
@@ -277,18 +281,17 @@ PHP_FUNCTION(regexp_match)
         int32_t group_count;
         int32_t l, u;
 
-        zval_dtor(subpats);
-        array_init(subpats);
-
         group_count = uregex_groupCount(ro->uregex, REGEXP_ERROR_CODE_P(ro));
         REGEXP_CHECK_STATUS(ro, "Error counting groups");
         for (i = 0; i <= group_count; i++) {
             REGEXP_GROUP_START(ro, i, l);
             REGEXP_GROUP_END(ro, i, u);
             UTF16_TO_UTF8(ro, group, group_len, usubject + l, u - l);
-            add_index_stringl(subpats, i, group, group_len, FALSE);
-            // For PREG_OFFSET_CAPTURE:
-            // add_index_stringl(subpats, u_countChar32(usubject, l), group, group_len, FALSE);
+            if (!(flags & OFFSET_CAPTURE)) {
+                add_index_stringl(subpats, i, group, group_len, FALSE);
+            } else {
+                add_index_stringl(subpats, u_countChar32(usubject, l), group, group_len, FALSE);
+            }
         }
     }
 
