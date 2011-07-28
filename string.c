@@ -770,14 +770,14 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int wan
             php_error_docref(NULL TSRMLS_CC, E_WARNING, "Empty delimiter");
             RETURN_FALSE;
         }
-        needle = Z_STRVAL_P(needle);
-        needle_len = Z_STRLEN_P(needle);
+        needle = Z_STRVAL_P(zneedle);
+        needle_len = Z_STRLEN_P(zneedle);
     } else {
         UChar32 c;
         char cus[U8_MAX_LENGTH + 1] = { 0 };
         int cus_length = 0;
 
-        if (SUCCESS != unicode_convert_needle_to_cp(needle, &c TSRMLS_CC)) {
+        if (SUCCESS != unicode_convert_needle_to_cp(zneedle, &c TSRMLS_CC)) {
             RETURN_FALSE;
         }
         U8_APPEND_UNSAFE(cus, cus_length, c);
