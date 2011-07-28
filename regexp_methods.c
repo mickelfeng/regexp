@@ -113,6 +113,53 @@ static void intl_errors_setf_custom_msg(intl_error* err TSRMLS_DC, char *format,
 static const UChar _UREGEXP_FAKE_USTR[] = { 0 };
 #define UREGEXP_FAKE_USTR _UREGEXP_FAKE_USTR, 0
 
+static void regexp_parse_error_to_string(UParseError pe, char *pattern, int32_t pattern_len)
+{
+    int32_t l;
+    char *eol, *from, *to, *end;
+
+    eol = from = pattern;
+    to = end = pattern + pattern_len;
+    if (1 != pe.line) {
+        for (l = 1; l < pe.line; l++) {
+            if (NULL == (eol = strchr(eol, 0x0A))) {
+                goto end; // prevent "bug"
+            }
+            eol++;
+        }
+        from = eol;
+    }
+    if (NULL != (eol = strchr(eol, 0x0A))) {
+        to = --eol;
+    }
+    if (to > from) { /* normal case: to == from on new/empty line ; anormal: implementation error */
+        intl_errors_setf_custom_msg(
+            NULL,
+            TSRMLS_CC
+            "regexp_create: unable to compile ICU regular expression, syntax error at line %d, offset %d:\n%.*s\n%.*s\n%*c\n%.*s\n",
+            pe.line,
+            pe.offset,
+            /* text before */
+            (from > pattern && 0x0A == *(from - 1)) ? (from - pattern) - 1 : from - pattern, pattern,
+            /* line pointed */
+            to - from + 1, from,
+            /* offset pointed */
+            pe.offset, '^',
+            /* text after */
+            (to < end && 0x0A == to[1]) ? end - to - 1 : end - to, to + 2 // TODO: to + 2 = UNSAFE ?
+        );
+    } else {
+end:
+        intl_errors_setf_custom_msg(
+            NULL,
+            TSRMLS_CC
+            "regexp_create: unable to compile ICU regular expression, syntax error at line %d, offset %d",
+            pe.line,
+            pe.offset
+        );
+    }
+}
+
 static void regexp_ctor(INTERNAL_FUNCTION_PARAMETERS)
 {
     zval *object;
@@ -169,8 +216,8 @@ static void regexp_ctor(INTERNAL_FUNCTION_PARAMETERS)
     efree(upattern);
     if (U_FAILURE(REGEXP_ERROR_CODE(ro))) {
         intl_error_set_code(NULL, REGEXP_ERROR_CODE(ro) TSRMLS_CC);
-        if (-1 == pe.line) {
-            intl_error_set_custom_msg(NULL, "regexp_create: unable to compile ICU regular expression, syntax error", 0 TSRMLS_CC);
+        if (-1 != pe.line) {
+            regexp_parse_error_to_string(pe, pattern, pattern_len);
         } else {
             intl_error_set_custom_msg(NULL, "regexp_create: unable to compile ICU regular expression", 0 TSRMLS_CC);
         }
