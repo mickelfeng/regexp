@@ -655,6 +655,8 @@ static void find_case_sensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want
     long start_cp = 0;
     int32_t start_cu = 0;
     char *found = NULL;
+    char cus[U8_MAX_LENGTH + 1] = { 0 };
+    int cus_length = 0;
 
     if (want_only_pos) {
         if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|l", &haystack, &haystack_len, &needle, &start_cp)) {
@@ -682,8 +684,6 @@ static void find_case_sensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want
         }
     } else { // we search a code point (convert needle into long)
         UChar32 c;
-        char cus[U8_MAX_LENGTH + 1] = { 0 };
-        int cus_length = 0;
 
         if (SUCCESS != unicode_convert_needle_to_cp(needle, &c TSRMLS_CC)) {
             goto end;
@@ -751,6 +751,8 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int wan
     int start_cp_offset = 0;
     UErrorCode status;
     zend_bool ignore_case = FALSE;
+    char cus[U8_MAX_LENGTH + 1] = { 0 };
+    int cus_length = 0;
 
     intl_error_reset(NULL TSRMLS_CC);
     // if (want_only_pos)
@@ -766,8 +768,6 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int wan
         needle_len = Z_STRLEN_P(zneedle);
     } else {
         UChar32 c;
-        char cus[U8_MAX_LENGTH + 1] = { 0 };
-        int cus_length = 0;
 
         if (SUCCESS != unicode_convert_needle_to_cp(zneedle, &c TSRMLS_CC)) {
             RETURN_FALSE;
