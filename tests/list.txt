@@ -10,7 +10,7 @@ ext/intl/regexp/tests/string_ncmp.phpt
 ext/intl/regexp/tests/string_ord.phpt
 ext/intl/regexp/tests/string_reverse.phpt
 ext/intl/regexp/tests/string_shuffle.phpt
+ext/intl/regexp/tests/string_slice.phpt
 ext/intl/regexp/tests/string_slice_cmp.phpt
 ext/intl/regexp/tests/string_split.phpt
-ext/intl/regexp/tests/string_sub.phpt
 ext/intl/regexp/tests/string_tr.phpt
