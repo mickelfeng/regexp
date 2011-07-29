@@ -99,19 +99,11 @@ PHP_FUNCTION(utf8_split)
         RETURN_FALSE;
     }
     array_init(return_value);
-    /*if (1 == length) {
-        while (cu_offset < string_len) {
-            U8_FWD_1(string, cu_offset, string_len);
-            add_next_index_stringl(return_value, string + last, cu_offset - last, TRUE);
-            last = cu_offset;
-        }
-    } else {*/
-        while (cu_offset < string_len) {
-            U8_FWD_N(string, cu_offset, string_len, length);
-            add_next_index_stringl(return_value, string + last, cu_offset - last, TRUE);
-            last = cu_offset;
-        }
-    /*}*/
+    while (cu_offset < string_len) {
+        U8_FWD_N(string, cu_offset, string_len, length);
+        add_next_index_stringl(return_value, string + last, cu_offset - last, TRUE);
+        last = cu_offset;
+    }
 }
 
 PHP_FUNCTION(utf8_count_chars) // TODO: tests
@@ -1019,9 +1011,89 @@ PHP_FUNCTION(utf8_validate) // TODO: tests
 }
 
 /**
+ * TODO:
+ * - assume start_cp_offset + cp_length <= utf8_countChar32(haystack)
+ * - negative length support?
+ **/
+PHP_FUNCTION(utf8_slice_count)
+{
+    char *haystack = NULL;
+    int haystack_len = 0;
+    zval *zneedle = NULL;
+    char *needle = NULL;
+    int needle_len = 0;
+    long start_cp_offset = 0;
+    int32_t start_cu_offset = 0;
+    long cp_length = 0;
+    int count = 0;
+    char *end, *p;
+    char cus[U8_MAX_LENGTH + 1] = { 0 };
+    int cus_length = 0;
+
+    intl_error_reset(NULL TSRMLS_CC);
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|ll", &haystack, &haystack_len, &zneedle, &start_cp_offset, &cp_length) == FAILURE) {
+        return;
+    }
+    if (IS_STRING == Z_TYPE_P(zneedle)) {
+        if (0 == Z_STRLEN_P(zneedle)) {
+            php_error_docref(NULL TSRMLS_CC, E_WARNING, "Empty substring");
+            RETURN_FALSE;
+        }
+        needle = Z_STRVAL_P(zneedle);
+        needle_len = Z_STRLEN_P(zneedle);
+    } else {
+        UChar32 c;
+
+        if (SUCCESS != unicode_convert_needle_to_cp(zneedle, &c TSRMLS_CC)) {
+            RETURN_FALSE;
+        }
+        U8_APPEND_UNSAFE(cus, cus_length, c);
+        needle = cus;
+        needle_len = cus_length;
+    }
+    UTF8_CP_TO_CU(haystack, haystack_len, start_cp_offset, start_cu_offset);
+    if (4 == ZEND_NUM_ARGS()) {
+        int32_t cu_length = 0;
+
+        if (cp_length <= 0) {
+            php_error_docref(NULL TSRMLS_CC, E_WARNING, "Length should be greater than 0");
+            RETURN_FALSE;
+        }
+        U8_FWD_N(haystack + start_cu_offset, cu_length, haystack_len - start_cu_offset, cp_length);
+        end = haystack + start_cu_offset + cu_length;
+    } else {
+        end = haystack + haystack_len;
+    }
+    p = haystack + start_cu_offset;
+    if (1 == needle_len) {
+        char cmp = needle[0];
+
+        while ((p = memchr(p, cmp, end - p))) {
+            count++;
+            p++;
+        }
+    } else {
+        while (NULL != (p = php_memnstr(p, needle, needle_len, end))) {
+            p += needle_len;
+            count++;
+        }
+    }
+
+    if (FALSE) {
+end:
+        RETURN_FALSE;
+    }
+    RETURN_LONG((long) count);
+}
+
+PHP_FUNCTION(substr_replace) // TODO: tests
+{
+    //
+}
+
+/**
  * TEST:
  * - [lr]?trim
- * - tr
  * - pos
  * - rpos
  * - str
@@ -1039,7 +1111,7 @@ PHP_FUNCTION(utf8_validate) // TODO: tests
  * Equivalents :
  *
  * substr => utf8_slice
- * substr_cmp => utf8_slice_cmp
+ * substr_compare => utf8_slice_cmp
  * strtolower => utf8_tolower
  * strtoupper => utf8_toupper
  * ucwords => utf8_totitle (not strictly, others chars are lowered)
@@ -1062,6 +1134,7 @@ PHP_FUNCTION(utf8_validate) // TODO: tests
  * strrpos => utf8_lastpos (TODO: rename ?)
  * strstr/strchr => utf8_firstsub (TODO: rename ?)
  * strrchr => utf8_lastsub (TODO: rename ?)
+ * substr_count => utf8_slice_count (TODO: tests)
  **/
 
 /**
