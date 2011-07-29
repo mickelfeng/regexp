@@ -1,4 +1,5 @@
 ext/intl/regexp/tests/regexp_get_flags.phpt
+ext/intl/regexp/tests/regexp_match_basic.phpt
 ext/intl/regexp/tests/regexp_match.phpt
 ext/intl/regexp/tests/regexp_split.phpt
 ext/intl/regexp/tests/string_casecmp.phpt
@@ -10,7 +11,7 @@ ext/intl/regexp/tests/string_ncmp.phpt
 ext/intl/regexp/tests/string_ord.phpt
 ext/intl/regexp/tests/string_reverse.phpt
 ext/intl/regexp/tests/string_shuffle.phpt
-ext/intl/regexp/tests/string_slice.phpt
 ext/intl/regexp/tests/string_slice_cmp.phpt
+ext/intl/regexp/tests/string_slice.phpt
 ext/intl/regexp/tests/string_split.phpt
 ext/intl/regexp/tests/string_tr.phpt
