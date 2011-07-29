@@ -97,6 +97,13 @@ $ro = ut_regexp_create($oo, "$h$e$l$l$o $w$o$r$l$d");
 var_dump(ut_regexp_match($oo, $ro, $string, $match5));
 var_dump($match5);
 
+echo "\n";
+echo 'Match a single line in a multiline text + offsets test', "\n";
+$ro = ut_regexp_create($oo, "$B.+");
+$string = "$B$A\n$B$B\n$B$C\n$B$D\n$B$E\n$B$F";
+var_dump(ut_regexp_match($oo, $ro, $string, $match6, Regexp::OFFSET_CAPTURE, 4));
+var_dump($match6);
+
 if (!$oo) {
     echo "\n";
     $oo = TRUE;
@@ -151,6 +158,13 @@ bool\(false\)
 array\(0\) \{
 \}
 
+Match a single line in a multiline text \+ offsets test
+bool\(true\)
+array\(1\) \{
+  \[6\]=>
+  string\(8\) \"\xF0\x9D\x98\xBD\xF0\x9D\x98\xBE\"
+\}
+
 Match a single line in a multiline text \(\. doesn't include \\n by default\)
 array\(2\) \{
   \[0\]=>
@@ -196,4 +210,11 @@ array\(1\) \{
 Tries to find \"hello world\" \(should be Hello, world\)
 bool\(false\)
 array\(0\) \{
+\}
+
+Match a single line in a multiline text \+ offsets test
+bool\(true\)
+array\(1\) \{
+  \[6\]=>
+  string\(8\) \"\xF0\x9D\x98\xBD\xF0\x9D\x98\xBE\"
 \}
