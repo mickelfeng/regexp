@@ -1086,9 +1086,53 @@ PHP_FUNCTION(utf8_slice_count)
     RETURN_LONG((long) count);
 }
 
-PHP_FUNCTION(substr_replace) // TODO: tests
+PHP_FUNCTION(utf8_slice_replace)
 {
-    //
+    char *string = NULL;
+    int string_len = 0;
+    char *replacement = NULL;
+    int replacement_len = 0;
+    long cp_length = 0;
+    int32_t cu_end = 0;
+    long cp_from = 0;
+    int32_t cu_from = 0;
+    char *result = NULL;
+    int result_len = 0;
+    int replaced_len = 0;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl|l", &string, &string_len, &replacement, &replacement_len, &cp_from, &cp_length) == FAILURE) {
+        return;
+    }
+    if (cp_from > 0) {
+        U8_FWD_N(string, cu_from, string_len, cp_from);
+    } else if (cp_from < 0) {
+        cu_from = string_len;
+        U8_BACK_N((const uint8_t *) string, 0, cu_from, -cp_from);
+    }
+    if (4 == ZEND_NUM_ARGS()) {
+        if (cp_length > 0) {
+            cu_end = cu_from;
+            U8_FWD_N(string, cu_end, string_len, cp_length);
+        } else if (cp_length < 0) {
+            cu_end = string_len;
+            U8_BACK_N((const uint8_t *) string, 0, cu_end, -cp_length);
+        }
+    } else {
+        cu_end = string_len;
+    }
+    if (cu_from > cu_end) {
+        RETURN_FALSE;
+    }
+    replaced_len = cu_end - cu_from;
+    result_len = string_len + replacement_len - replaced_len;
+    result = mem_new_n(*result, result_len + 1);
+
+    memcpy(result, string, cu_from);
+    memcpy(result + cu_from, replacement, replacement_len);
+    memcpy(result + cu_from + replacement_len, string + cu_from + replaced_len, string_len - cu_from - replaced_len);
+    result[result_len] = '\0';
+
+    RETVAL_STRINGL(result, result_len, FALSE);
 }
 
 /**
@@ -1135,6 +1179,7 @@ PHP_FUNCTION(substr_replace) // TODO: tests
  * strstr/strchr => utf8_firstsub (TODO: rename ?)
  * strrchr => utf8_lastsub (TODO: rename ?)
  * substr_count => utf8_slice_count
+ * substr_replace => utf8_slice_replace
  **/
 
 /**

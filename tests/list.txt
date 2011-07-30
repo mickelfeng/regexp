@@ -14,5 +14,6 @@ ext/intl/regexp/tests/string_shuffle.phpt
 ext/intl/regexp/tests/string_slice_cmp.phpt
 ext/intl/regexp/tests/string_slice_count.phpt
 ext/intl/regexp/tests/string_slice.phpt
+ext/intl/regexp/tests/string_slice_replace.phpt
 ext/intl/regexp/tests/string_split.phpt
 ext/intl/regexp/tests/string_tr.phpt
