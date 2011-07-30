@@ -1010,11 +1010,6 @@ PHP_FUNCTION(utf8_validate) // TODO: tests
     RETURN_BOOL(ret);
 }
 
-/**
- * TODO:
- * - assume start_cp_offset + cp_length <= utf8_countChar32(haystack)
- * - negative length support?
- **/
 PHP_FUNCTION(utf8_slice_count)
 {
     char *haystack = NULL;
@@ -1022,8 +1017,8 @@ PHP_FUNCTION(utf8_slice_count)
     zval *zneedle = NULL;
     char *needle = NULL;
     int needle_len = 0;
-    long start_cp_offset = 0;
-    int32_t start_cu_offset = 0;
+    long cp_start = 0;
+    int32_t cu_start = 0;
     long cp_length = 0;
     int count = 0;
     char *end, *p;
@@ -1031,7 +1026,7 @@ PHP_FUNCTION(utf8_slice_count)
     int cus_length = 0;
 
     intl_error_reset(NULL TSRMLS_CC);
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|ll", &haystack, &haystack_len, &zneedle, &start_cp_offset, &cp_length) == FAILURE) {
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|ll", &haystack, &haystack_len, &zneedle, &cp_start, &cp_length) == FAILURE) {
         return;
     }
     if (IS_STRING == Z_TYPE_P(zneedle)) {
@@ -1051,20 +1046,37 @@ PHP_FUNCTION(utf8_slice_count)
         needle = cus;
         needle_len = cus_length;
     }
-    UTF8_CP_TO_CU(haystack, haystack_len, start_cp_offset, start_cu_offset);
+    if (cp_start > 0) {
+        U8_FWD_N(haystack, cu_start, haystack_len, cp_start);
+    } else if (cp_start < 0) {
+        cu_start = haystack_len;
+        U8_BACK_N((const uint8_t *) haystack, 0, cu_start, -cp_start);
+    }
     if (4 == ZEND_NUM_ARGS()) {
-        int32_t cu_length = 0;
+        int32_t cu_end = 0;
 
+        /*int32_t cu_length = 0;
         if (cp_length <= 0) {
             php_error_docref(NULL TSRMLS_CC, E_WARNING, "Length should be greater than 0");
             RETURN_FALSE;
         }
         U8_FWD_N(haystack + start_cu_offset, cu_length, haystack_len - start_cu_offset, cp_length);
-        end = haystack + start_cu_offset + cu_length;
+        end = haystack + start_cu_offset + cu_length;*/
+        if (cp_length > 0) {
+            cu_end = cu_start;
+            U8_FWD_N(haystack, cu_end, haystack_len, cp_length);
+        } else if (cp_length < 0) {
+            cu_end = haystack_len;
+            U8_BACK_N((const uint8_t *) haystack, 0, cu_end, -cp_length);
+        }
+        end = haystack + cu_end;
+        if (end < haystack + cu_start) {
+            RETURN_FALSE;
+        }
     } else {
         end = haystack + haystack_len;
     }
-    p = haystack + start_cu_offset;
+    p = haystack + cu_start;
     if (1 == needle_len) {
         char cmp = needle[0];
 
@@ -1079,10 +1091,6 @@ PHP_FUNCTION(utf8_slice_count)
         }
     }
 
-    if (FALSE) {
-end:
-        RETURN_FALSE;
-    }
     RETURN_LONG((long) count);
 }
 

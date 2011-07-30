@@ -15,9 +15,8 @@ $D="\xF0\x9D\x98\xBF";
 var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C"));
 var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", $A, 0, 1, FALSE));
 
-// Invalid lengths
-var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", $A, 0, 0));
-var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", $A, 0, -2));
+var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", $A, 0, 0)); // 0
+var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", $A, 0, -3));
 
 // Overlap so 1 not 2
 var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", "$A$B$C$A")); // 1
@@ -28,10 +27,10 @@ var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", $B, -5)); // 2
 var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", $C, -5, 2)); // 1
 
 // Code point conversion
-var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", 0x1D63E, 1, 6/*-1*/)); // 2
+var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", 0x1D63E, 1, -1)); // 2
 
 // Not found
-var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", 0x1D63F, 1, 6/*-1*/)); // 0
+var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", 0x1D63F, 1, -1)); // 0
 var_dump(utf8_slice_count("$A$B$C$A$B$C$A$B$C", $D)); // 0
 ?>
 --EXPECTF--
@@ -41,12 +40,8 @@ NULL
 
 Warning: utf8_slice_count() expects at most 4 parameters, 5 given in %s on line %d
 NULL
-
-Warning: utf8_slice_count(): Length should be greater than 0 in %s on line %d
-bool(false)
-
-Warning: utf8_slice_count(): Length should be greater than 0 in %s on line %d
-bool(false)
+int(0)
+int(2)
 int(1)
 int(2)
 int(2)
