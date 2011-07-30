@@ -49,7 +49,7 @@ PHP_FUNCTION(utf8_isalpha)
     validate(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_isalpha);
 }
 
-PHP_FUNCTION(utf8_istitle)
+PHP_FUNCTION(utf8_istitle) // no sense except for a single char ...
 {
     validate(INTERNAL_FUNCTION_PARAM_PASSTHRU, u_istitle);
 }

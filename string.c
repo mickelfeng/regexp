@@ -1055,13 +1055,6 @@ PHP_FUNCTION(utf8_slice_count)
     if (4 == ZEND_NUM_ARGS()) {
         int32_t cu_end = 0;
 
-        /*int32_t cu_length = 0;
-        if (cp_length <= 0) {
-            php_error_docref(NULL TSRMLS_CC, E_WARNING, "Length should be greater than 0");
-            RETURN_FALSE;
-        }
-        U8_FWD_N(haystack + start_cu_offset, cu_length, haystack_len - start_cu_offset, cp_length);
-        end = haystack + start_cu_offset + cu_length;*/
         if (cp_length > 0) {
             cu_end = cu_start;
             U8_FWD_N(haystack, cu_end, haystack_len, cp_length);
@@ -1142,7 +1135,7 @@ PHP_FUNCTION(substr_replace) // TODO: tests
  * strrpos => utf8_lastpos (TODO: rename ?)
  * strstr/strchr => utf8_firstsub (TODO: rename ?)
  * strrchr => utf8_lastsub (TODO: rename ?)
- * substr_count => utf8_slice_count (TODO: tests)
+ * substr_count => utf8_slice_count
  **/
 
 /**
@@ -1163,7 +1156,7 @@ PHP_FUNCTION(substr_replace) // TODO: tests
 // str_ireplace : rewrite
 // strnatcasecmp, strnatcmp : use collations?
 // strncasecmp, strcasecmp : rewrite (2 versions : with case folding and full/locale?)
-// substr_replace, substr_count : rewrite (offsets)
+// substr_replace : rewrite (offsets)
 // ucfirst, lcfirst : no sense ?
 // wordwrap : ?
 // *printf : rewrite
