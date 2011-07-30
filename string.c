@@ -1025,7 +1025,6 @@ PHP_FUNCTION(utf8_slice_count)
     char cus[U8_MAX_LENGTH + 1] = { 0 };
     int cus_length = 0;
 
-    intl_error_reset(NULL TSRMLS_CC);
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|ll", &haystack, &haystack_len, &zneedle, &cp_start, &cp_length) == FAILURE) {
         return;
     }
