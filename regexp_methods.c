@@ -2,7 +2,7 @@
 # include "config.h"
 #endif /* HAVE_CONFIG_H */
 
-#include "php_intl.h"
+#include "error.h"
 #include "regexp.h"
 #include "regexp_class.h"
 #include "regexp_methods.h"
@@ -11,19 +11,6 @@
 #include "unicode.h"
 
 #include <zend_exceptions.h>
-
-
-static void intl_errors_setf_custom_msg(intl_error* err TSRMLS_DC, char *format, ...)
-{
-    char *msg;
-    va_list args;
-
-    va_start(args, format);
-    vspprintf(&msg, 0, format, args);
-    va_end(args);
-    intl_errors_set_custom_msg(err, msg, TRUE TSRMLS_CC);
-    efree(msg);
-}
 
 #define REGEXP_PARSE_VOID_ARGS(name, reset)                                                                               \
     do {                                                                                                                  \

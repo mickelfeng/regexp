@@ -9,7 +9,7 @@
 
 #include "php.h"
 #include "../../standard/php_rand.h"
-#include "php_intl.h"
+#include "error.h"
 #include "intl_data.h"
 #include "intl_convert.h"
 #include "unicode.h"
@@ -999,12 +999,12 @@ PHP_FUNCTION(utf8_validate) // TODO: tests
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|b", &string, &string_len, &quiet)) {
         return;
     }
-    if (!quiet) {
-        intl_error_reset(NULL TSRMLS_CC);
-    }
+    intl_error_reset(NULL TSRMLS_CC);
     ret = utf8_validate((const uint8_t *) string, string_len, &status);
-    if (!quiet) {
+    if (quiet) {
         intl_error_set_code(NULL, status TSRMLS_CC);
+    } else {
+        intl_error_non_quiet_set_code(status TSRMLS_CC);
     }
 
     RETURN_BOOL(ret);
