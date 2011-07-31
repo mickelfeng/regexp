@@ -133,7 +133,7 @@ void utf16_fullcase(
     }
     do { /* Iteration needed: string may be longer than original ! */
         target_size = ++tries * src_len + 1;
-        *target = mem_renew(*target, *target, target_size);
+        *target = mem_renew(*target, **target, target_size);
         *target_len = unicode_case_mapping[ct].u16_func(*target, target_size, src, src_len, locale, status);
         if (U_SUCCESS(status)) {
             break;
