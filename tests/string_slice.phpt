@@ -6,9 +6,6 @@ Test utf8_slice function
 <?php
 ini_set('intl.error_level', E_WARNING);
 
-define('OK', 'OK');
-define('FAILED', 'FAILED');
-
 $A="\xF0\x9D\x98\xBC"; # 1D63C, Lu
 $B="\xF0\x9D\x98\xBD";
 $C="\xF0\x9D\x98\xBE";
@@ -21,13 +18,13 @@ var_dump(utf8_slice($input));
 echo "\n";
 var_dump(utf8_slice($input, 1, 2, 3));
 echo "\n";
-echo utf8_slice($input, -1) === $F              ? OK : FAILED, "\n";
-echo utf8_slice($input, -2) === "$E$F"          ? OK : FAILED, "\n";
-echo utf8_slice($input, -3, 1) === $D           ? OK : FAILED, "\n";
-echo utf8_slice($input, 0, -1) === "$A$B$C$D$E" ? OK : FAILED, "\n";
-echo utf8_slice($input, 2, -1) === "$C$D$E"     ? OK : FAILED, "\n";
-echo utf8_slice($input, 4, -4) === ''           ? OK : FAILED, "\n";
-echo utf8_slice($input, -3, -1) === "$D$E"      ? OK : FAILED, "\n";
+var_dump(utf8_slice($input, -1) === $F);
+var_dump(utf8_slice($input, -2) === "$E$F");
+var_dump(utf8_slice($input, -3, 1) === $D);
+var_dump(utf8_slice($input, 0, -1) === "$A$B$C$D$E");
+var_dump(utf8_slice($input, 2, -1) === "$C$D$E");
+var_dump(utf8_slice($input, 4, -4) === '');
+var_dump(utf8_slice($input, -3, -1) === "$D$E");
 ?>
 --EXPECTF--
 
@@ -38,10 +35,10 @@ NULL
 Warning: utf8_slice() expects at most 3 parameters, 4 given in %s on line %d
 NULL
 
-OK
-OK
-OK
-OK
-OK
-OK
-OK
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)

@@ -15,18 +15,14 @@ $F="\xF0\x9D\x99\x81";
 $input = "$A$B$C$D$E$F";
 
 var_dump(utf8_len());
-echo "\n";
 var_dump(utf8_len($input, 0));
-echo "\n";
-echo utf8_len($input), "\n";
+var_dump(utf8_len($input));
 ?>
 --EXPECTF--
 
 Warning: utf8_len() expects exactly 1 parameter, 0 given in %s on line %d
 NULL
 
-
 Warning: utf8_len() expects exactly 1 parameter, 2 given in %s on line %d
 NULL
-
-6
+int(6)

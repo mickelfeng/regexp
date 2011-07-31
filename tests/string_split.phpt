@@ -19,8 +19,8 @@ var_dump(utf8_split($input, 0));
 echo "\n";
 var_dump(utf8_split($input, 1, 2));
 echo "\n";
-echo utf8_split($input, 1) === array("$A", "$B", "$C", "$D", "$E") ? 'OK' : 'FAILED', "\n";
-echo utf8_split($input, 2) === array("$A$B", "$C$D", "$E") ? 'OK' : 'FAILED', "\n";
+var_dump(utf8_split($input, 1) === array("$A", "$B", "$C", "$D", "$E"));
+var_dump(utf8_split($input, 2) === array("$A$B", "$C$D", "$E"));
 ?>
 --EXPECTF--
 
@@ -35,5 +35,5 @@ bool(false)
 Warning: utf8_split() expects at most 2 parameters, 3 given in %s on line %d
 NULL
 
-OK
-OK
+bool(true)
+bool(true)

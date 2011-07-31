@@ -12,7 +12,7 @@ var_dump(utf8_chr());
 echo "\n";
 var_dump(utf8_chr(63, 64));
 echo "\n";
-echo utf8_chr(0x1D63C) === $A ? 'OK' : 'FAILED', "\n";
+var_dump(utf8_chr(0x1D63C) === $A);
 ?>
 --EXPECTF--
 Warning: utf8_chr() expects exactly 1 parameter, 0 given in %s on line %d
@@ -22,4 +22,4 @@ NULL
 Warning: utf8_chr() expects exactly 1 parameter, 2 given in %s on line %d
 NULL
 
-OK
+bool(true)

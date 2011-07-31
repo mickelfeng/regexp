@@ -55,7 +55,7 @@ $expected = array_fill_keys(array_map('utf8_ord', utf8_str_split($input)), 1);
 ksort($res);
 ksort($expected);
 
-var_dump($res === $expected ? 'OK' : 'FAILED');
+var_dump($res === $expected);
 ?>
 --EXPECTF--
 
@@ -64,4 +64,4 @@ NULL
 
 Warning: utf8_shuffle() expects exactly 1 parameter, 2 given in %s on line %d
 NULL
-string(2) "OK"
+bool(true)
