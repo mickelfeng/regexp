@@ -40,4 +40,6 @@ PHP_FUNCTION(utf8_shuffle);
 
 PHP_FUNCTION(utf8_validate);
 
+PHP_FUNCTION(utf8_ireplace);
+
 #endif /* !INTL_STRING_H */

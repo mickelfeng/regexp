@@ -1025,7 +1025,7 @@ PHP_FUNCTION(utf8_slice_count)
     char cus[U8_MAX_LENGTH + 1] = { 0 };
     int cus_length = 0;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|ll", &haystack, &haystack_len, &zneedle, &cp_start, &cp_length) == FAILURE) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|ll", &haystack, &haystack_len, &zneedle, &cp_start, &cp_length)) {
         return;
     }
     if (IS_STRING == Z_TYPE_P(zneedle)) {
@@ -1100,7 +1100,7 @@ PHP_FUNCTION(utf8_slice_replace)
     int result_len = 0;
     int replaced_len = 0;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl|l", &string, &string_len, &replacement, &replacement_len, &cp_from, &cp_length) == FAILURE) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl|l", &string, &string_len, &replacement, &replacement_len, &cp_from, &cp_length)) {
         return;
     }
     if (cp_from > 0) {
@@ -1133,6 +1133,114 @@ PHP_FUNCTION(utf8_slice_replace)
     result[result_len] = '\0';
 
     RETVAL_STRINGL(result, result_len, FALSE);
+}
+
+#include <unicode/ucol.h>
+#include <unicode/usearch.h>
+
+/**
+ * TODO: move to Collator (as Collator::replace) (and remove ucol + locale variables and associated)
+ * - locale were already handled
+ * - permits all UCollator options (strength, attributes, etc)
+ **/
+PHP_FUNCTION(utf8_ireplace) // TODO: tests
+{
+    char *result = NULL;
+    int result_len = 0;
+    char *locale = NULL;
+    int locale_len = 0;
+    char *search = NULL;
+    int search_len = 0;
+    char *replace = NULL;
+    int replace_len = 0;
+    char *subject = NULL;
+    int subject_len = 0;
+    zval *zcount = NULL;
+    long count = 0;
+    UChar *usearch = NULL;
+    int32_t usearch_len = 0;
+    UChar *usubject = NULL;
+    int32_t usubject_len = 0;
+    UStringSearch *uss = NULL;
+    UCollator *ucol = NULL;
+    UErrorCode status = U_ZERO_ERROR;
+    int32_t l;
+
+    intl_error_reset(NULL TSRMLS_CC);
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss|sz", &subject, &subject_len, &search, &search_len, &replace, &replace_len, &locale, &locale_len, &zcount)) {
+        return;
+    }
+    UTF8_TO_UTF16(status, usearch, usearch_len, search, search_len);
+    UTF8_TO_UTF16(status, usubject, usubject_len, subject, subject_len);
+    if (0 == locale_len) {
+        locale = INTL_G(default_locale);
+    }
+    ucol = ucol_open(locale, &status);
+    if (!intl_error_non_quiet_set_code(status TSRMLS_CC)) {
+        goto end;
+    }
+    ucol_setStrength(ucol, UCOL_PRIMARY); // it's just for testing
+    uss = usearch_openFromCollator(usearch, usearch_len, usubject, usubject_len, ucol, NULL, &status);
+    if (!intl_error_non_quiet_set_code(status TSRMLS_CC)) {
+        goto end;
+    }
+    result = estrndup(subject, result_len = subject_len);
+    for (l = usearch_first(uss, &status); U_SUCCESS(status) && USEARCH_DONE != l; l = usearch_next(uss, &status), count++) {
+        int j;
+        int32_t diff_len;
+        int32_t utf8_match_cu_length = 0;
+        int32_t utf8_cu_start_match_offset = 0;
+        int32_t utf16_cp_start_match_offset = u_countChar32(usearch, l);
+        //int32_t utf16_match_cp_length = u_countChar32(usearch + l, usearch_getMatchedLength(uss));
+        int32_t utf16_cu_start_match_offset = l;
+        int32_t utf16_cu_end_match_offset = l + usearch_getMatchedLength(uss);
+
+        for (j = utf16_cu_start_match_offset; j < utf16_cu_end_match_offset; j++) {
+            UChar32 c;
+
+            U16_NEXT(usubject, utf16_cu_start_match_offset, utf16_cu_end_match_offset, c);
+            utf8_match_cu_length += U8_LENGTH(c);
+        }
+        U8_FWD_N(subject, utf8_cu_start_match_offset, subject_len, utf16_cp_start_match_offset);
+        diff_len = replace_len - utf8_match_cu_length;
+        if (diff_len > 0) {
+            result = mem_renew(result, *result, result_len + diff_len + 1);
+        }
+        if (replace_len != utf8_match_cu_length) {
+            memmove(result + utf8_cu_start_match_offset + utf8_match_cu_length + diff_len, result + utf8_cu_start_match_offset + utf8_match_cu_length, result_len - utf8_cu_start_match_offset - utf8_match_cu_length);
+        }
+        memcpy(result + utf8_cu_start_match_offset, replace, replace_len);
+        result_len += diff_len;
+    }
+    if (!intl_error_non_quiet_set_code(status TSRMLS_CC)) {
+        goto end;
+    }
+    result[result_len] = '\0';
+    RETVAL_STRINGL(result, result_len, FALSE);
+
+    if (FALSE) {
+end:
+        if (NULL != result) {
+            efree(result);
+        }
+        RETVAL_FALSE;
+    }
+    if (NULL != usearch) {
+        efree(usearch);
+    }
+    if (NULL != usubject) {
+        efree(usubject);
+    }
+    if (NULL != usearch) {
+        usearch_close(uss);
+    }
+    if (NULL != ucol) {
+        ucol_close(ucol);
+    }
+    if (ZEND_NUM_ARGS() > 4) {
+        zval_dtor(zcount);
+        ZVAL_LONG(zcount, count);
+    }
 }
 
 /**
@@ -1180,6 +1288,7 @@ PHP_FUNCTION(utf8_slice_replace)
  * strrchr => utf8_lastsub (TODO: rename ?)
  * substr_count => utf8_slice_count
  * substr_replace => utf8_slice_replace
+ * str_ireplace => utf8_ireplace (TODO: move to Collator ; tests)
  **/
 
 /**
@@ -1197,11 +1306,14 @@ PHP_FUNCTION(utf8_slice_replace)
 // strcmp : same
 // str_repeat : same
 
-// str_ireplace : rewrite
 // strnatcasecmp, strnatcmp : use collations?
 // strncasecmp, strcasecmp : rewrite (2 versions : with case folding and full/locale?)
-// substr_replace : rewrite (offsets)
 // ucfirst, lcfirst : no sense ?
 // wordwrap : ?
 // *printf : rewrite
 // ...
+
+/**
+ * strn(case)?cmp: length doesn't really make sense ?
+ * str(case)cmp : use collations for implementation ?
+ **/
