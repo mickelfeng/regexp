@@ -962,7 +962,7 @@ PHP_FUNCTION(utf8_shuffle)
     }
     cp_count = utf8_countChar32((const uint8_t *) string, string_len);
     if (cp_count <= 1) {
-        RETURN_STRINGL(string, string_len, 1);
+        RETURN_STRINGL(string, string_len, TRUE);
     }
     chars = mem_new_n(*chars, cp_count);
     result = mem_new_n(*result, string_len + 1);
@@ -1186,6 +1186,8 @@ PHP_FUNCTION(utf8_ireplace) // TODO: tests
     }
     result = estrndup(subject, result_len = subject_len);
     for (l = usearch_first(uss, &status); U_SUCCESS(status) && USEARCH_DONE != l; l = usearch_next(uss, &status), count++) {
+        utf8_replace_len_from_utf16(result, &result_len, replace, replace_len, usubject, l, usearch_getMatchedLength(uss));
+#if 0
         int j;
         int32_t diff_len;
         int32_t utf8_match_cu_length = 0;
@@ -1211,6 +1213,7 @@ PHP_FUNCTION(utf8_ireplace) // TODO: tests
         }
         memcpy(result + utf8_cu_start_match_offset, replace, replace_len);
         result_len += diff_len;
+#endif
     }
     if (!intl_error_non_quiet_set_code(status TSRMLS_CC)) {
         goto end;

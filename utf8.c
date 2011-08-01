@@ -517,13 +517,38 @@ void utf8_add_cp_replacement(HashTable *ht, UChar32 cp_from, const char *cu_to, 
 }
 
 #if 0
-void utf16_add_cp_replacement(HashTable *ht, UChar32 cp_from, UChar32 cp_to)
-{
-    //
-}
-
 void utf8_do_replacement(HashTable *ht, const char *from, int from_len, char **to, int *to_len)
 {
     //
 }
 #endif
+
+void utf8_replace_len_from_utf16(
+    char *string, int *string_len,
+    char *replacement, int replacement_len,
+    UChar *ustring, int32_t utf16_cu_start_match_offset, int32_t utf16_cu_length
+) {
+    int i;
+    int32_t diff_len;
+    int32_t utf8_match_cu_length = 0;
+    int32_t utf8_cu_start_match_offset = 0;
+    int32_t utf16_cp_start_match_offset = u_countChar32(ustring, utf16_cu_start_match_offset);
+    int32_t utf16_cu_end_match_offset = utf16_cu_start_match_offset + utf16_cu_length;
+
+    for (i = utf16_cu_start_match_offset; i < utf16_cu_end_match_offset; i++) {
+        UChar32 c;
+
+        U16_NEXT(ustring, utf16_cu_start_match_offset, utf16_cu_end_match_offset, c);
+        utf8_match_cu_length += U8_LENGTH(c);
+    }
+    U8_FWD_N(string, utf8_cu_start_match_offset, *string_len, utf16_cp_start_match_offset);
+    diff_len = replacement_len - utf8_match_cu_length;
+    if (diff_len > 0) {
+        string = mem_renew(string, *string, *string_len + diff_len + 1);
+    }
+    if (replacement_len != utf8_match_cu_length) {
+        memmove(string + utf8_cu_start_match_offset + utf8_match_cu_length + diff_len, string + utf8_cu_start_match_offset + utf8_match_cu_length, *string_len - utf8_cu_start_match_offset - utf8_match_cu_length);
+    }
+    memcpy(string + utf8_cu_start_match_offset, replacement, replacement_len);
+    *string_len += diff_len;
+}
