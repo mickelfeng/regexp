@@ -5,6 +5,7 @@ ext/intl/regexp/tests/regexp_split.phpt
 ext/intl/regexp/tests/string_casecmp.phpt
 ext/intl/regexp/tests/string_chr.phpt
 ext/intl/regexp/tests/string_fullcasemapping.phpt
+ext/intl/regexp/tests/string_ireplace.phpt
 ext/intl/regexp/tests/string_lastindex.phpt
 ext/intl/regexp/tests/string_len.phpt
 ext/intl/regexp/tests/string_ncmp.phpt
