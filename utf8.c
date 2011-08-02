@@ -524,31 +524,53 @@ void utf8_do_replacement(HashTable *ht, const char *from, int from_len, char **t
 #endif
 
 void utf8_replace_len_from_utf16(
-    char *string, int *string_len,
+    char **string, int *string_len,
     char *replacement, int replacement_len,
-    UChar *ustring, int32_t utf16_cu_start_match_offset, int32_t utf16_cu_length
+    UChar *ustring, int32_t utf16_cu_start_match_offset, int32_t utf16_cu_length,
+    int32_t utf16_cp_length
+    /*, ReplacementDirection direction*/
 ) {
     int i;
     int32_t diff_len;
     int32_t utf8_match_cu_length = 0;
     int32_t utf8_cu_start_match_offset = 0;
     int32_t utf16_cp_start_match_offset = u_countChar32(ustring, utf16_cu_start_match_offset);
-    int32_t utf16_cu_end_match_offset = utf16_cu_start_match_offset + utf16_cu_length;
 
-    for (i = utf16_cu_start_match_offset; i < utf16_cu_end_match_offset; i++) {
-        UChar32 c;
+    if (0 == utf16_cu_length) {
+        utf8_match_cu_length = 0;
+    } else {
+        int32_t utf16_cu_end_match_offset = utf16_cu_start_match_offset + utf16_cu_length;
 
-        U16_NEXT(ustring, utf16_cu_start_match_offset, utf16_cu_end_match_offset, c);
-        utf8_match_cu_length += U8_LENGTH(c);
+        for (i = utf16_cu_start_match_offset; i < utf16_cu_end_match_offset; i++) {
+            UChar32 c;
+
+            U16_NEXT(ustring, utf16_cu_start_match_offset, utf16_cu_end_match_offset, c);
+            utf8_match_cu_length += U8_LENGTH(c); // TODO: handle surrogates(forbidden)?
+        }
     }
-    U8_FWD_N(string, utf8_cu_start_match_offset, *string_len, utf16_cp_start_match_offset);
+    /* <NOTE> */
+    /**
+     * String is altered from start to end
+     * But a replacement of a different length, create a gap. We should consider it, when there is multiple replacements
+     * So, we should consider the part of string we haven't yet modified: we should recalculate offsets from end of string
+     * instead its start
+     * (there is many way: but it'll introduce, at least, a new parameter: an int or a pointer - last one may be "dangerous" because of realloc)
+     **/
+    //if (REPLACE_REVERSE == direction) {
+    //utf8_cu_start_match_offset = 0;
+    //U8_FWD_N(*string, utf8_cu_start_match_offset, *string_len, utf16_cp_start_match_offset);
+    //} else {
+    utf8_cu_start_match_offset = *string_len;
+    U8_BACK_N(*string, 0, utf8_cu_start_match_offset, utf16_cp_length - utf16_cp_start_match_offset);
+    //}
+    /* </NOTE> */
     diff_len = replacement_len - utf8_match_cu_length;
     if (diff_len > 0) {
-        string = mem_renew(string, *string, *string_len + diff_len + 1);
+        *string = mem_renew(*string, **string, *string_len + diff_len + 1); // reference may no longer be valid from this point
     }
     if (replacement_len != utf8_match_cu_length) {
-        memmove(string + utf8_cu_start_match_offset + utf8_match_cu_length + diff_len, string + utf8_cu_start_match_offset + utf8_match_cu_length, *string_len - utf8_cu_start_match_offset - utf8_match_cu_length);
+        memmove(*string + utf8_cu_start_match_offset + utf8_match_cu_length + diff_len, *string + utf8_cu_start_match_offset + utf8_match_cu_length, *string_len - utf8_cu_start_match_offset - utf8_match_cu_length);
     }
-    memcpy(string + utf8_cu_start_match_offset, replacement, replacement_len);
+    memcpy(*string + utf8_cu_start_match_offset, replacement, replacement_len);
     *string_len += diff_len;
 }
