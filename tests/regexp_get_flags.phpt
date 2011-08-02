@@ -1,7 +1,7 @@
 --TEST--
 Test Regexp::getFlags function
 --SKIPIF--
-<?php if (!extension_loaded('intl')) echo 'skip'; ?>
+<?php if (!extension_loaded('intl') || version_compare(PHP_VERSION, '5.3.0', '<')) echo 'skip'; ?>
 --FILE--
 <?php
 ini_set('intl.error_level', E_WARNING);

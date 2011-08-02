@@ -41,8 +41,8 @@ var_dump(assert_single('Petersburger Straße', 'SS', '<eszett>', 'Petersburger S
 var_dump(assert_multiple('Petersburger Straße', 'SS', '<eszett>', 'Petersburger Stra<eszett>e'));
 
 echo 'DZ digraph', "\n";
-var_dump(assert_single('ǲwon HRÁǱA', 'Ǳ', '<DZ>', '<DZ>won HRÁ<DZ>A'));
-var_dump(assert_multiple('ǲwon HRÁǱA', 'Ǳ', '<DZ>', '<DZ>won HRÁ<DZ>A'));
+var_dump(assert_single('ǲwon hráǳa', 'Ǳ', '<DZ>', '<DZ>won hrá<DZ>a'));
+var_dump(assert_multiple('ǲwon hráǳa', 'Ǳ', '<DZ>', '<DZ>won hrá<DZ>a'));
 
 echo 'Turkish dotted I', "\n";
 var_dump(assert_single('İyi akşamlar', 'İ', '<dotted i>', '<dotted i>y<dotted i> akşamlar', 'tr'));

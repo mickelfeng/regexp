@@ -1,7 +1,7 @@
 --TEST--
 Test Regexp::match function
 --SKIPIF--
-<?php if (!extension_loaded('intl')) echo 'skip'; ?>
+<?php if (!extension_loaded('intl') || version_compare(PHP_VERSION, '5.3.0', '<')) echo 'skip'; ?>
 --FILE--
 <?php
 $A="\xF0\x9D\x98\xBC"; # 1D63C, Lu
