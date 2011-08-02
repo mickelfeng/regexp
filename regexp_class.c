@@ -148,6 +148,7 @@ zend_function_entry Regexp_class_functions[] = {
     PHP_ME_MAPPING(match, regexp_match, ainfo_regexp_match, ZEND_ACC_PUBLIC)
     PHP_ME_MAPPING(matchAll, regexp_match_all, ainfo_regexp_match, ZEND_ACC_PUBLIC)
     PHP_ME_MAPPING(replace, regexp_replace, ainfo_regexp_replace, ZEND_ACC_PUBLIC)
+    PHP_ME_MAPPING(replaceCallback, regexp_replace_callback, ainfo_regexp_replace, ZEND_ACC_PUBLIC)
     PHP_ME_MAPPING(split, regexp_split, ainfo_regexp_split, ZEND_ACC_PUBLIC)
     PHP_ME_MAPPING(getPattern, regexp_get_pattern, ainfo_regexp_void, ZEND_ACC_PUBLIC)
     PHP_ME_MAPPING(getFlags, regexp_get_flags, ainfo_regexp_void, ZEND_ACC_PUBLIC)

@@ -32,3 +32,4 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_regexp_split, 0, 0, 2)
     ZEND_ARG_INFO(0, limit)
     ZEND_ARG_INFO(0, flags)
 ZEND_END_ARG_INFO()
+

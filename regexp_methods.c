@@ -298,12 +298,14 @@ end:
 
 PHP_FUNCTION(regexp_match_all)
 {
+    int i;
     int match_count = 0;
     char *subject = NULL;
     int subject_len = 0;
     UChar *usubject = NULL;
     int32_t usubject_len = 0;
     zval *subpats = NULL;
+    zval **Zres = NULL;
     int32_t start_cu_offset = 0;
     long start_cp_offset = 0;
     int32_t group_count = 0;
@@ -331,6 +333,15 @@ PHP_FUNCTION(regexp_match_all)
         array_init(subpats);
         group_count = uregex_groupCount(ro->uregex, REGEXP_ERROR_CODE_P(ro));
         REGEXP_CHECK_STATUS(ro, "Error counting groups");
+
+        if ((flags & MATCH_ALL_PATTERN_ORDER)) {
+            Zres = mem_new_n(*Zres, group_count + 1);
+            for (i = 0; i <= group_count; i++) {
+                ALLOC_ZVAL(Zres[i]);
+                array_init(Zres[i]);
+                INIT_PZVAL(Zres[i]);
+            }
+        }
     }
     if (0 != start_cp_offset) {
         uregex_reset(ro->uregex, start_cu_offset, REGEXP_ERROR_CODE_P(ro));
@@ -339,28 +350,46 @@ PHP_FUNCTION(regexp_match_all)
     while (uregex_findNext(ro->uregex, REGEXP_ERROR_CODE_P(ro))) {
         match_count++;
         if (NULL != subpats) {
-            int i;
             char *group;
             int group_len;
             int32_t l, u;
             zval *match_groups;
 
-            ALLOC_ZVAL(match_groups);
-            array_init(match_groups);
-            INIT_PZVAL(match_groups);
-
+            if (!(flags & MATCH_ALL_PATTERN_ORDER)) {
+                ALLOC_ZVAL(match_groups);
+                array_init(match_groups);
+                INIT_PZVAL(match_groups);
+            }
             for (i = 0; i <= group_count; i++) {
                 REGEXP_GROUP_START(ro, i, l);
                 REGEXP_GROUP_END(ro, i, u);
                 UTF16_TO_UTF8(ro, group, group_len, usubject + l, u - l);
-                add_index_stringl(match_groups, i, group, group_len, FALSE);
-                // For PREG_OFFSET_CAPTURE:
-                // add_index_stringl(match_groups, u_countChar32(usubject, l), group, group_len, FALSE);
+                if ((flags & MATCH_ALL_PATTERN_ORDER)) {
+                    if (!(flags & OFFSET_CAPTURE)) {
+                        add_next_index_stringl(Zres[i], group, group_len, FALSE);
+                    } else {
+                        add_index_stringl(Zres[i], u_countChar32(usubject, l), group, group_len, FALSE);
+                    }
+                } else {
+                    if (!(flags & OFFSET_CAPTURE)) {
+                        add_index_stringl(match_groups, i, group, group_len, FALSE);
+                    } else {
+                        add_index_stringl(match_groups, u_countChar32(usubject, l), group, group_len, FALSE);
+                    }
+                }
             }
-            zend_hash_next_index_insert(Z_ARRVAL_P(subpats), &match_groups, sizeof(zval *), NULL);
+            if (!(flags & MATCH_ALL_PATTERN_ORDER)) {
+                zend_hash_next_index_insert(Z_ARRVAL_P(subpats), &match_groups, sizeof(zval *), NULL);
+            }
         }
     }
     REGEXP_CHECK_STATUS(ro, "Error finding pattern");
+    if ((flags & MATCH_ALL_PATTERN_ORDER)) {
+        for (i = 0; i <= group_count; i++) {
+            zend_hash_next_index_insert(Z_ARRVAL_P(subpats), &Zres[i], sizeof(zval *), NULL);
+        }
+        efree(Zres);
+    }
     RETVAL_LONG(match_count);
 
     if (FALSE) {
@@ -415,7 +444,7 @@ end:
 /**
  * TODO:
  * - eval flag equivalent?
- * - preg_replace_callback equivalent?
+ * - limit + count arguments
  **/
 PHP_FUNCTION(regexp_replace)
 {
@@ -476,6 +505,94 @@ end:
         RETVAL_FALSE;
     } else {
         RETVAL_STRINGL(result, result_len, 0);
+    }
+}
+
+PHP_FUNCTION(regexp_replace_callback)
+{
+    char *subject = NULL;
+    int subject_len = 0;
+    UChar *usubject = NULL;
+    int32_t usubject_len = 0;
+    int32_t usubject_cp_len = 0;
+    zval **Zcallback;
+    char *callback = NULL;
+    zval *match_groups = NULL;
+    zval **zargs[1];
+    zval *retval_ptr;
+    char *result = NULL;
+    int result_len = 0;
+    int32_t group_count = 0;
+
+    REGEXP_METHOD_INIT_VARS
+
+    if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "OsZ", &object, Regexp_ce_ptr, &subject, &subject_len, &Zcallback)) {
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_replace: bad arguments", 0 TSRMLS_CC);
+        RETURN_FALSE;
+    }
+    REGEXP_METHOD_FETCH_OBJECT(TRUE);
+    if (!zend_is_callable(*Zcallback, 0, &callback TSRMLS_CC)) {
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "requires a valid callback", callback);
+        //intl_errors_set_custom_msg(REGEXP_ERROR_P(ro), "regexp_replace_callback: requires a valid callback", 0 TSRMLS_CC);
+        efree(callback);
+        RETURN_FALSE;
+    }
+    UTF8_TO_UTF16(ro, usubject, usubject_len, subject, subject_len);
+    usubject_cp_len = u_countChar32(usubject, usubject_len);
+    uregex_setText(ro->uregex, usubject, usubject_len, REGEXP_ERROR_CODE_P(ro));
+    REGEXP_CHECK_STATUS(ro, "Error setting text");
+    group_count = uregex_groupCount(ro->uregex, REGEXP_ERROR_CODE_P(ro));
+    MAKE_STD_ZVAL(match_groups);
+    array_init(match_groups);
+    zargs[0] = &match_groups;
+    result = estrndup(subject, result_len = subject_len);
+    while (/*match_count <= limit && */ uregex_findNext(ro->uregex, REGEXP_ERROR_CODE_P(ro))) {
+        int i;
+        char *group;
+        int group_len;
+        int32_t l, u, l0, u0;
+        //match_count++;
+
+        REGEXP_GROUP_START(ro, 0, l0);
+        REGEXP_GROUP_END(ro, 0, u0);
+        UTF16_TO_UTF8(ro, group, group_len, usubject + l0, u0 - l0);
+        add_index_stringl(match_groups, 0, group, group_len, FALSE);
+        for (i = 1; i <= group_count; i++) {
+            REGEXP_GROUP_START(ro, i, l);
+            REGEXP_GROUP_END(ro, i, u);
+            UTF16_TO_UTF8(ro, group, group_len, usubject + l, u - l);
+            add_index_stringl(match_groups, i, group, group_len, FALSE);
+        }
+        if (SUCCESS == call_user_function_ex(EG(function_table), NULL, *Zcallback, &retval_ptr, 1, zargs, 0, NULL TSRMLS_CC) && NULL != retval_ptr) {
+            convert_to_string_ex(&retval_ptr);
+            utf8_replace_len_from_utf16(&result, &result_len, Z_STRVAL_P(retval_ptr), Z_STRLEN_P(retval_ptr), usubject, l0, u0 - l0, usubject_cp_len);
+            zval_ptr_dtor(&retval_ptr);
+        } else {
+            if (!EG(exception)) {
+                php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call custom replacement function");
+            }
+            goto end; // is it appropriate?
+        }
+        zend_hash_clean(Z_ARRVAL_P(match_groups)); // is it better/faster than overwrite/s?
+    }
+    result[result_len] = '\0';
+    RETVAL_STRINGL(result, result_len, FALSE);
+
+    if (FALSE) {
+end:
+        if (NULL != result) {
+            efree(result);
+        }
+        RETVAL_FALSE;
+    }
+    if (NULL != usubject) {
+        efree(usubject);
+    }
+    if (NULL != match_groups) {
+        zval_ptr_dtor(&match_groups);
+    }
+    if (NULL != callback) {
+        efree(callback);
     }
 }
 

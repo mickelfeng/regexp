@@ -2,6 +2,7 @@
     PHP_FE(regexp_match, arginfo_regexp_match)
     PHP_FE(regexp_match_all, arginfo_regexp_match)
     PHP_FE(regexp_replace, arginfo_regexp_replace)
+    PHP_FE(regexp_replace_callback, arginfo_regexp_replace)
     PHP_FE(regexp_split, arginfo_regexp_split)
     PHP_FE(regexp_get_pattern, arginfo_regexp_self)
     PHP_FE(regexp_get_flags, arginfo_regexp_self)
