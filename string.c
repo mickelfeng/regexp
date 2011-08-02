@@ -1281,23 +1281,18 @@ PHP_FUNCTION(utf8_wordwrap) // TODO: tests
                 int32_t cp_length_between_end_words = u_countChar32(ustring + i, i - u);
                 int32_t cp_word_length = u_countChar32(ustring + l, i - l);
 
-                /**
-                 * TODO: cut is not working
-                 **/
-                if (cut && cp_word_length > width) {
-                    int32_t utf16_break_cu_offset;
+                if (cut && cp_word_length >= width) {
+                    int32_t utf16_break_cu_offset = l;
                     int j;
 
-                    //utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len);
+                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len);
                     for (j = 0; j < (int) (cp_word_length / width); j++) {
-                        utf16_break_cu_offset = l;
                         U16_FWD_N(ustring, utf16_break_cu_offset, i, width);
                         utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, utf16_break_cu_offset, 0, ustring_cp_len);
                     }
                     current_line_cp_length = cp_word_length % width;
                     current_line_cu_offset = utf16_break_cu_offset + width;
-// debug("CL_cp_L = %d, CL_cu_O = %d", current_line_cp_length, current_line_cu_offset);
-                } else if (current_line_cp_length + cp_length_between_end_words > width) {
+                } else if (current_line_cp_length + cp_length_between_end_words >= width) {
                     utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len);
                     current_line_cp_length = cp_word_length;
                     current_line_cu_offset = l;
@@ -1371,7 +1366,7 @@ end:
  * strrchr => utf8_lastsub (TODO: rename ?)
  * substr_count => utf8_slice_count
  * substr_replace => utf8_slice_replace
- * str_ireplace => utf8_ireplace (TODO: move to Collator ; tests)
+ * str_ireplace => utf8_ireplace (TODO: move to Collator)
  * wordwrap => utf8_wordwrap (TODO: tests)
  **/
 
