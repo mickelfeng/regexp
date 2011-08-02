@@ -4,6 +4,7 @@ PHP_FE(utf8_len, arginfo_string)
 PHP_FE(utf8_reverse, arginfo_string)
 PHP_FE(utf8_shuffle, arginfo_string)
 
+PHP_FE(utf8_wordwrap, arginfo_wordwrap)
 PHP_FE(utf8_count_words, arginfo_count_words)
 PHP_FE(utf8_count_chars, arginfo_count_chars)
 PHP_FE(utf8_split, arginfo_split)

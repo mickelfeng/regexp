@@ -17,6 +17,15 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_count_words, 0, 0, 1)
     ZEND_ARG_INFO(0, format)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_wordwrap, 0, 0, 1)
+    ZEND_ARG_INFO(0, string)
+    ZEND_ARG_INFO(0, width)
+    ZEND_ARG_INFO(0, replacement)
+    //ZEND_ARG_INFO(0, locale)
+    ZEND_ARG_INFO(0, cut_word)
+ZEND_END_ARG_INFO()
+
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_split, 0, 0, 1)
     ZEND_ARG_INFO(0, string)
     ZEND_ARG_INFO(0, length)

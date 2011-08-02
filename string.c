@@ -285,6 +285,9 @@ end:
     }
 }
 
+/**
+ * TODO: make a bench between UTF-8 => UTF-16 conversion and using a (static) UText
+ **/
 PHP_FUNCTION(utf8_count_words) // TODO: tests
 {
     enum {
@@ -313,6 +316,7 @@ PHP_FUNCTION(utf8_count_words) // TODO: tests
     }
     UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
     brk = ubrk_open(UBRK_WORD, locale, ustring, ustring_len, &status);
+    // TODO: check status
     if (COUNT_ONLY == format) {
         long words = 0;
 
@@ -1143,7 +1147,7 @@ PHP_FUNCTION(utf8_slice_replace)
  * - locale were already handled
  * - permits all UCollator options (strength, attributes, etc)
  **/
-PHP_FUNCTION(utf8_ireplace) // TODO: tests
+PHP_FUNCTION(utf8_ireplace)
 {
     char *result = NULL;
     int result_len = 0;
@@ -1161,6 +1165,7 @@ PHP_FUNCTION(utf8_ireplace) // TODO: tests
     int32_t usearch_len = 0;
     UChar *usubject = NULL;
     int32_t usubject_len = 0;
+    int32_t usubject_cp_len = 0;
     UStringSearch *uss = NULL;
     UCollator *ucol = NULL;
     UErrorCode status = U_ZERO_ERROR;
@@ -1184,36 +1189,10 @@ PHP_FUNCTION(utf8_ireplace) // TODO: tests
     if (!intl_error_non_quiet_set_code(status TSRMLS_CC)) {
         goto end;
     }
+    usubject_cp_len = u_countChar32(usubject, usubject_len);
     result = estrndup(subject, result_len = subject_len);
     for (l = usearch_first(uss, &status); U_SUCCESS(status) && USEARCH_DONE != l; l = usearch_next(uss, &status), count++) {
-        utf8_replace_len_from_utf16(result, &result_len, replace, replace_len, usubject, l, usearch_getMatchedLength(uss));
-#if 0
-        int j;
-        int32_t diff_len;
-        int32_t utf8_match_cu_length = 0;
-        int32_t utf8_cu_start_match_offset = 0;
-        int32_t utf16_cp_start_match_offset = u_countChar32(usearch, l);
-        //int32_t utf16_match_cp_length = u_countChar32(usearch + l, usearch_getMatchedLength(uss));
-        int32_t utf16_cu_start_match_offset = l;
-        int32_t utf16_cu_end_match_offset = l + usearch_getMatchedLength(uss);
-
-        for (j = utf16_cu_start_match_offset; j < utf16_cu_end_match_offset; j++) {
-            UChar32 c;
-
-            U16_NEXT(usubject, utf16_cu_start_match_offset, utf16_cu_end_match_offset, c);
-            utf8_match_cu_length += U8_LENGTH(c);
-        }
-        U8_FWD_N(subject, utf8_cu_start_match_offset, subject_len, utf16_cp_start_match_offset);
-        diff_len = replace_len - utf8_match_cu_length;
-        if (diff_len > 0) {
-            result = mem_renew(result, *result, result_len + diff_len + 1);
-        }
-        if (replace_len != utf8_match_cu_length) {
-            memmove(result + utf8_cu_start_match_offset + utf8_match_cu_length + diff_len, result + utf8_cu_start_match_offset + utf8_match_cu_length, result_len - utf8_cu_start_match_offset - utf8_match_cu_length);
-        }
-        memcpy(result + utf8_cu_start_match_offset, replace, replace_len);
-        result_len += diff_len;
-#endif
+        utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, usubject, l, usearch_getMatchedLength(uss), usubject_cp_len);
     }
     if (!intl_error_non_quiet_set_code(status TSRMLS_CC)) {
         goto end;
@@ -1243,6 +1222,107 @@ end:
     if (ZEND_NUM_ARGS() > 4) {
         zval_dtor(zcount);
         ZVAL_LONG(zcount, count);
+    }
+}
+
+#include "SAPI.h"
+
+// php -r 'var_dump(utf8_wordwrap("Le chat est vraiment ... stupide 123", 5, "\n", rand(0, 1)));'
+PHP_FUNCTION(utf8_wordwrap) // TODO: tests
+{
+    char *string = NULL;
+    int string_len = 0;
+    char *replace = NULL;
+    int replace_len = 0;
+    char *locale = NULL;
+    int locale_len = 0;
+    long width = 75;
+    UChar *ustring = NULL;
+    int32_t ustring_len = 0;
+    int32_t ustring_cp_len = 0;
+    zend_bool cut = FALSE;
+    UErrorCode status = U_ZERO_ERROR;
+    UBreakIterator *brk = NULL;
+    char *result = NULL;
+    int result_len = 0;
+    int32_t i, l = 0, u = 0;
+    int32_t current_line_cu_offset = 0, current_line_cp_length = 0;
+
+    intl_error_reset(NULL TSRMLS_CC);
+    // TODO: add locale
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|lsb", &string, &string_len, &width, &replace, &replace_len, &cut)) {
+        return;
+    }
+    if (width <= 0) {
+        // error
+    }
+    if (0 == locale_len) {
+        locale = INTL_G(default_locale);
+    }
+    if (0 == replace_len) {
+        if (!strcmp(sapi_module.name, "cli")) {
+            replace = "\n";
+            replace_len = sizeof("\n") - 1;
+        } else {
+            replace = "<br />\n";
+            replace_len = sizeof("<br />\n") - 1;
+        }
+    }
+    UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
+    ustring_cp_len = u_countChar32(ustring, ustring_len);
+    result = estrndup(string, result_len = string_len);
+    brk = ubrk_open(UBRK_WORD, locale, ustring, ustring_len, &status);
+    // check status
+    if (UBRK_DONE != (i = ubrk_first(brk))) {
+        do {
+            if (UBRK_WORD_NONE == ubrk_getRuleStatus(brk)) {
+                l = i;
+            } else {
+                int32_t cp_length_between_end_words = u_countChar32(ustring + i, i - u);
+                int32_t cp_word_length = u_countChar32(ustring + l, i - l);
+
+                /**
+                 * TODO: cut is not working
+                 **/
+                if (cut && cp_word_length > width) {
+                    int32_t utf16_break_cu_offset;
+                    int j;
+
+                    //utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len);
+                    for (j = 0; j < (int) (cp_word_length / width); j++) {
+                        utf16_break_cu_offset = l;
+                        U16_FWD_N(ustring, utf16_break_cu_offset, i, width);
+                        utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, utf16_break_cu_offset, 0, ustring_cp_len);
+                    }
+                    current_line_cp_length = cp_word_length % width;
+                    current_line_cu_offset = utf16_break_cu_offset + width;
+// debug("CL_cp_L = %d, CL_cu_O = %d", current_line_cp_length, current_line_cu_offset);
+                } else if (current_line_cp_length + cp_length_between_end_words > width) {
+                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len);
+                    current_line_cp_length = cp_word_length;
+                    current_line_cu_offset = l;
+                } else {
+                    current_line_cp_length += cp_length_between_end_words;
+                }
+                u = i;
+            }
+        } while (UBRK_DONE != (i = ubrk_next(brk)));
+    }
+    result[result_len] = '\0';
+    RETVAL_STRINGL(result, result_len, FALSE);
+
+    if (FALSE) {
+end:
+        RETVAL_FALSE;
+        if (NULL != result) {
+            efree(result);
+        }
+    }
+    if (NULL != ustring) {
+        efree(ustring);
+    }
+    if (NULL != brk) {
+        ubrk_close(brk);
     }
 }
 
@@ -1292,6 +1372,7 @@ end:
  * substr_count => utf8_slice_count
  * substr_replace => utf8_slice_replace
  * str_ireplace => utf8_ireplace (TODO: move to Collator ; tests)
+ * wordwrap => utf8_wordwrap (TODO: tests)
  **/
 
 /**
@@ -1312,8 +1393,7 @@ end:
 // strnatcasecmp, strnatcmp : use collations?
 // strncasecmp, strcasecmp : rewrite (2 versions : with case folding and full/locale?)
 // ucfirst, lcfirst : no sense ?
-// wordwrap : ?
-// *printf : rewrite
+// *printf : -
 // ...
 
 /**

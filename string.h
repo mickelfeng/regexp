@@ -7,6 +7,7 @@ PHP_FUNCTION(utf8_chr);
 PHP_FUNCTION(utf8_ord);
 PHP_FUNCTION(utf8_reverse);
 
+PHP_FUNCTION(utf8_wordwrap);
 PHP_FUNCTION(utf8_count_words);
 PHP_FUNCTION(utf8_count_chars);
 PHP_FUNCTION(utf8_split);
