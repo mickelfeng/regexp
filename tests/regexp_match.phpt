@@ -4,6 +4,8 @@ Test Regexp::match function
 <?php if (!extension_loaded('intl') || version_compare(PHP_VERSION, '5.3.0', '<')) echo 'skip'; ?>
 --FILE--
 <?php
+require(__DIR__ . '/ut_regexp_common.inc');
+
 $A="\xF0\x9D\x98\xBC"; # 1D63C, Lu
 $B="\xF0\x9D\x98\xBD";
 $C="\xF0\x9D\x98\xBE";
@@ -26,18 +28,6 @@ $r = "\xF0\x9D\x98\xB3"; # 1D633
 $s = "\xF0\x9D\x98\xB4"; # 1D634
 $t = "\xF0\x9D\x98\xB5"; # 1D635
 $w = "\xF0\x9D\x98\xB8"; # 1D638
-
-function ut_regexp_create($oo)
-{
-    $args = func_get_args();
-    array_splice($args, 0, 1);
-    if ($oo) {
-        $r = new ReflectionClass('Regexp');
-        return $r->newInstanceArgs($args);
-    } else {
-        return call_user_func_array('regexp_create', $args);
-    }
-}
 
 function ut_regexp_match($oo, $ro, $subject, &$matches, $flags = 0, $start_offset = 0)
 {

@@ -4,19 +4,9 @@ Test Regexp::getFlags function
 <?php if (!extension_loaded('intl') || version_compare(PHP_VERSION, '5.3.0', '<')) echo 'skip'; ?>
 --FILE--
 <?php
-ini_set('intl.error_level', E_WARNING);
+require(__DIR__ . '/ut_regexp_common.inc');
 
-function ut_regexp_create($oo)
-{
-    $args = func_get_args();
-    array_splice($args, 0, 1);
-    if ($oo) {
-        $r = new ReflectionClass('Regexp');
-        return $r->newInstanceArgs($args);
-    } else {
-        return call_user_func_array('regexp_create', $args);
-    }
-}
+ini_set('intl.error_level', E_WARNING);
 
 function ut_regexp_get_flags($oo, $ro)
 {
