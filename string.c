@@ -316,7 +316,9 @@ PHP_FUNCTION(utf8_count_words) // TODO: tests
     }
     UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
     brk = ubrk_open(UBRK_WORD, locale, ustring, ustring_len, &status);
-    // TODO: check status
+    if (!intl_error_non_quiet_set_code(status TSRMLS_CC)) {
+        goto end;
+    }
     if (COUNT_ONLY == format) {
         long words = 0;
 
@@ -1227,7 +1229,6 @@ end:
 
 #include "SAPI.h"
 
-// php -r 'var_dump(utf8_wordwrap("Le chat est vraiment ... stupide 123", 5, "\n", rand(0, 1)));'
 PHP_FUNCTION(utf8_wordwrap) // TODO: tests
 {
     char *string = NULL;
@@ -1249,12 +1250,15 @@ PHP_FUNCTION(utf8_wordwrap) // TODO: tests
     int32_t current_line_cu_offset = 0, current_line_cp_length = 0;
 
     intl_error_reset(NULL TSRMLS_CC);
-    // TODO: add locale
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|lsb", &string, &string_len, &width, &replace, &replace_len, &cut)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|lssb", &string, &string_len, &width, &locale, &locale_len, &replace, &replace_len, &cut)) {
         return;
     }
+    if (0 == string_len) {
+        RETURN_EMPTY_STRING();
+    }
     if (width <= 0) {
-        // error
+        intl_errors_set_custom_msg(NULL, "length of segment must be greater than 0", 0 TSRMLS_CC);
+        RETURN_FALSE;
     }
     if (0 == locale_len) {
         locale = INTL_G(default_locale);
@@ -1272,7 +1276,9 @@ PHP_FUNCTION(utf8_wordwrap) // TODO: tests
     ustring_cp_len = u_countChar32(ustring, ustring_len);
     result = estrndup(string, result_len = string_len);
     brk = ubrk_open(UBRK_WORD, locale, ustring, ustring_len, &status);
-    // check status
+    if (!intl_error_non_quiet_set_code(status TSRMLS_CC)) {
+        goto end;
+    }
     if (UBRK_DONE != (i = ubrk_first(brk))) {
         do {
             if (UBRK_WORD_NONE == ubrk_getRuleStatus(brk)) {
@@ -1330,6 +1336,7 @@ end:
  * - count_chars
  * - word_count
  * - validate
+ * - wordwrap
  **/
 
 /**
@@ -1388,7 +1395,6 @@ end:
 // strnatcasecmp, strnatcmp : use collations?
 // strncasecmp, strcasecmp : rewrite (2 versions : with case folding and full/locale?)
 // ucfirst, lcfirst : no sense ?
-// *printf : -
 // ...
 
 /**
