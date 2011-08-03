@@ -12,7 +12,6 @@
 #include "error.h"
 #include "intl_data.h"
 #include "intl_convert.h"
-#include "unicode.h"
 #include "utf8.h"
 #include "utf16.h"
 #include "string.h"
@@ -1194,7 +1193,7 @@ PHP_FUNCTION(utf8_ireplace)
     usubject_cp_len = u_countChar32(usubject, usubject_len);
     result = estrndup(subject, result_len = subject_len);
     for (l = usearch_first(uss, &status); U_SUCCESS(status) && USEARCH_DONE != l; l = usearch_next(uss, &status), count++) {
-        utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, usubject, l, usearch_getMatchedLength(uss), usubject_cp_len);
+        utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, usubject, l, usearch_getMatchedLength(uss), usubject_cp_len, REPLACE_FORWARD);
     }
     if (!intl_error_non_quiet_set_code(status TSRMLS_CC)) {
         goto end;
@@ -1291,15 +1290,15 @@ PHP_FUNCTION(utf8_wordwrap) // TODO: tests
                     int32_t utf16_break_cu_offset = l;
                     int j;
 
-                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len);
+                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len, REPLACE_FORWARD);
                     for (j = 0; j < (int) (cp_word_length / width); j++) {
                         U16_FWD_N(ustring, utf16_break_cu_offset, i, width);
-                        utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, utf16_break_cu_offset, 0, ustring_cp_len);
+                        utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, utf16_break_cu_offset, 0, ustring_cp_len, REPLACE_FORWARD);
                     }
                     current_line_cp_length = cp_word_length % width;
                     current_line_cu_offset = utf16_break_cu_offset + width;
                 } else if (current_line_cp_length + cp_length_between_end_words >= width) {
-                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len);
+                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len, REPLACE_FORWARD);
                     current_line_cp_length = cp_word_length;
                     current_line_cu_offset = l;
                 } else {

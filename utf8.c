@@ -12,8 +12,6 @@
 #include <unicode/uchar.h>
 #include <unicode/ucasemap.h>
 #include <unicode/ustring.h>
-#include <unicode/unorm.h>
-#include "unicode.h"
 #include "utf16.h"
 #include "utf8.h"
 
@@ -527,8 +525,8 @@ void utf8_replace_len_from_utf16(
     char **string, int *string_len,
     char *replacement, int replacement_len,
     UChar *ustring, int32_t utf16_cu_start_match_offset, int32_t utf16_cu_length,
-    int32_t utf16_cp_length
-    /*, ReplacementDirection direction*/
+    int32_t utf16_cp_length,
+    ReplacementDirection direction
 ) {
     int i;
     int32_t diff_len;
@@ -556,13 +554,13 @@ void utf8_replace_len_from_utf16(
      * instead its start
      * (there is many way: but it'll introduce, at least, a new parameter: an int or a pointer - last one may be "dangerous" because of realloc)
      **/
-    //if (REPLACE_REVERSE == direction) {
-    //utf8_cu_start_match_offset = 0;
-    //U8_FWD_N(*string, utf8_cu_start_match_offset, *string_len, utf16_cp_start_match_offset);
-    //} else {
-    utf8_cu_start_match_offset = *string_len;
-    U8_BACK_N(*string, 0, utf8_cu_start_match_offset, utf16_cp_length - utf16_cp_start_match_offset);
-    //}
+    if (REPLACE_REVERSE == direction) {
+        utf8_cu_start_match_offset = 0;
+        U8_FWD_N(*string, utf8_cu_start_match_offset, *string_len, utf16_cp_start_match_offset);
+    } else {
+        utf8_cu_start_match_offset = *string_len;
+        U8_BACK_N(*string, 0, utf8_cu_start_match_offset, utf16_cp_length - utf16_cp_start_match_offset);
+    }
     /* </NOTE> */
     diff_len = replacement_len - utf8_match_cu_length;
     if (diff_len > 0) {

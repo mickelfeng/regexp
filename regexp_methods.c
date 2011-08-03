@@ -8,7 +8,7 @@
 #include "regexp_methods.h"
 #include "intl_data.h"
 #include "intl_convert.h"
-#include "unicode.h"
+#include "utf8.h"
 
 #include <zend_exceptions.h>
 
@@ -565,7 +565,7 @@ PHP_FUNCTION(regexp_replace_callback)
         }
         if (SUCCESS == call_user_function_ex(EG(function_table), NULL, *Zcallback, &retval_ptr, 1, zargs, 0, NULL TSRMLS_CC) && NULL != retval_ptr) {
             convert_to_string_ex(&retval_ptr);
-            utf8_replace_len_from_utf16(&result, &result_len, Z_STRVAL_P(retval_ptr), Z_STRLEN_P(retval_ptr), usubject, l0, u0 - l0, usubject_cp_len);
+            utf8_replace_len_from_utf16(&result, &result_len, Z_STRVAL_P(retval_ptr), Z_STRLEN_P(retval_ptr), usubject, l0, u0 - l0, usubject_cp_len, REPLACE_FORWARD);
             zval_ptr_dtor(&retval_ptr);
         } else {
             if (!EG(exception)) {
