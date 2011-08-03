@@ -162,7 +162,7 @@ static void regexp_ctor(INTERNAL_FUNCTION_PARAMETERS)
     intl_error_reset(NULL TSRMLS_CC);
     object = return_value;
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|z", &pattern, &pattern_len, &zflags)) {
-        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_create: bad arguments", 0 TSRMLS_CC);
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "bad arguments", 0 TSRMLS_CC);
         zval_dtor(object);
         RETURN_NULL();
     }
@@ -183,7 +183,7 @@ static void regexp_ctor(INTERNAL_FUNCTION_PARAMETERS)
                         case 'x': flags |= UREGEX_COMMENTS;         break;
                         case 'w': flags |= UREGEX_UWORD;            break;
                         default:
-                            intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_create: invalid modifier", 0 TSRMLS_CC);
+                            intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "invalid modifier", 0 TSRMLS_CC);
                             zval_dtor(object);
                             RETURN_NULL();
                     }
@@ -191,7 +191,7 @@ static void regexp_ctor(INTERNAL_FUNCTION_PARAMETERS)
                 break;
             }
             default:
-                intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_create: bad arguments", 0 TSRMLS_CC);
+                intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "bad arguments", 0 TSRMLS_CC);
                 zval_dtor(object);
                 RETURN_NULL();
         }

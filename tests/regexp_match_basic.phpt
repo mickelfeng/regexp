@@ -4,11 +4,9 @@ Test Regexp::match prototype's function
 <?php if (!extension_loaded('intl')) echo 'skip'; ?>
 --FILE--
 <?php
-ini_set('intl.error_level', 0); // will be sufficient
+require(__DIR__ . '/ut_regexp_common.inc');
 
-$A="\xF0\x9D\x98\xBC"; # 1D63C, Lu
-$B="\xF0\x9D\x98\xBD";
-$C="\xF0\x9D\x98\xBE";
+ini_set('intl.error_level', 0); // will be sufficient
 
 $ro = new Regexp('.');
 

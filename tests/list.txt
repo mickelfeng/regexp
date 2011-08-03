@@ -1,3 +1,4 @@
+ext/intl/regexp/tests/regexp_basic.phpt
 ext/intl/regexp/tests/regexp_get_flags.phpt
 ext/intl/regexp/tests/regexp_match_basic.phpt
 ext/intl/regexp/tests/regexp_match.phpt

@@ -6,8 +6,6 @@ Test Regexp::getFlags function
 <?php
 require(__DIR__ . '/ut_regexp_common.inc');
 
-ini_set('intl.error_level', E_WARNING);
-
 function ut_regexp_get_flags($oo, $ro)
 {
     $args = func_get_args();
