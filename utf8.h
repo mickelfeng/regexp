@@ -1,6 +1,6 @@
 #ifndef INTL_UTF8_H
 
-# define INT_UTF8_H
+# define INTL_UTF8_H
 
 # include <unicode/unorm.h>
 

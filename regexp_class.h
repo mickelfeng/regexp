@@ -1,5 +1,5 @@
-#ifndef REGEXP_CLASS_H
-#define REGEXP_CLASS_H
+#ifndef INTL_REGEXP_CLASS_H
+#define INTL_REGEXP_CLASS_H
 
 #include <php.h>
 
@@ -54,4 +54,4 @@ void regexp_register_Regexp_class(TSRMLS_D);
 extern zend_class_entry *Regexp_ce_ptr;
 extern zend_object_handlers Regexp_handlers;
 
-#endif /* #ifndef REGEXP_CLASS_H */
+#endif /* #ifndef INTL_REGEXP_CLASS_H */
