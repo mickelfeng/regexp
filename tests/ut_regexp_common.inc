@@ -42,3 +42,10 @@ function ut_regexp_create($oo)
     }
 }
 
+function ut_regexp_split($oo, $ro)
+{
+    $args = func_get_args();
+    array_splice($args, 0, $oo ? 2 : 1);
+    return call_user_func_array($oo ? array($ro, 'split') : 'regexp_split', $args);
+}
+

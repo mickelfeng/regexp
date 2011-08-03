@@ -616,12 +616,12 @@ PHP_FUNCTION(regexp_split)
     array_init(return_value);
 
     if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|ll", &object, Regexp_ce_ptr, &subject, &subject_len, &limit, &flags)) {
-        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_split: bad arguments", 0 TSRMLS_CC);
-        RETURN_FALSE;
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "bad arguments", 0 TSRMLS_CC);
+        goto end;
     }
     if (0 != (flags & ~(OFFSET_CAPTURE|SPLIT_NO_EMPTY|SPLIT_DELIM_CAPTURE))) {
-        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_split: invalid flag(s)", 0 TSRMLS_CC);
-        RETURN_FALSE;
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "invalid flag(s)", 0 TSRMLS_CC);
+        goto end;
     }
     if (limit <= 0) {
         limit = INT_MAX;

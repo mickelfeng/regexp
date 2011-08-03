@@ -4,73 +4,73 @@ Test Regexp::split function
 <?php if (!extension_loaded('intl') || version_compare(PHP_VERSION, '5.3.0', '<')) echo 'skip'; ?>
 --FILE--
 <?php
-$A="\xF0\x9D\x98\xBC"; # 1D63C, Lu
-$B="\xF0\x9D\x98\xBD";
-$C="\xF0\x9D\x98\xBE";
-$D="\xF0\x9D\x98\xBF";
-$E="\xF0\x9D\x99\x80";
-$F="\xF0\x9D\x99\x81";
-
-function ut_regexp_create($oo)
-{
-    $args = func_get_args();
-    array_splice($args, 0, 1);
-    if ($oo) {
-        $r = new ReflectionClass('Regexp');
-        return $r->newInstanceArgs($args);
-    } else {
-        return call_user_func_array('regexp_create', $args);
-    }
-}
-
-function ut_regexp_split($oo, $ro)
-{
-    $args = func_get_args();
-    array_splice($args, 0, $oo ? 2 : 1);
-    return call_user_func_array($oo ? array($ro, 'split') : 'regexp_split', $args);
-}
+require(__DIR__ . '/ut_regexp_common.inc');
 
 $oo = FALSE;
 
 start_test_suite:
 
-ini_set('intl.error_level', 0); // double errors, so disable this temporary
-var_dump(ut_regexp_create($oo));
-
-ini_set('intl.error_level', E_WARNING);
-
 $ro = ut_regexp_create($oo, "$A$B$C");
 $subject = "$A$B$C$D$E$F$A$B{$C}def$A$B$C";
 
-# Limit
+// Prototype
+var_dump(ut_regexp_split($oo, $ro));
+var_dump(ut_regexp_split($oo, $ro, 'string to cut', -1, 0, 'FAIL'));
+
+// Limit
 echo 'Limit to 1/4: ', ut_regexp_split($oo, $ro, $subject, 1) === array($subject) ? 'OK' : 'FAILED', "\n";
 echo 'Limit to 2/4: ', ut_regexp_split($oo, $ro, $subject, 2) === array('', "$D$E$F$A$B{$C}def$A$B$C") ? 'OK' : 'FAILED', "\n";
 
-# SPLIT_NO_EMPTY alone
+// SPLIT_NO_EMPTY alone
 echo 'SPLIT_NO_EMPTY: ', ut_regexp_split($oo, $ro, $subject, -1, Regexp::SPLIT_NO_EMPTY) === preg_split("/$A$B$C/u", $subject, -1, PREG_SPLIT_NO_EMPTY) ? 'OK' : 'FAILED', "\n";
 
-# OFFSET_CAPTURE alone
+// OFFSET_CAPTURE alone
 echo 'OFFSET_CAPTURE: ', ut_regexp_split($oo, $ro, $subject, -1, Regexp::OFFSET_CAPTURE) === array(0 => '', 3 => "$D$E$F", 9 => 'def', 15 => '') ? 'OK' : 'FAILED', "\n";
 
-# SPLIT_DELIM_CAPTURE alone
-# TODO, when implemented
+// SPLIT_DELIM_CAPTURE alone
+$ro = ut_regexp_create($oo, "($A)[$B|$H]($C)");
+echo 'SPLIT_DELIM_CAPTURE: ', ut_regexp_split($oo, $ro, $subject, -1, Regexp::SPLIT_DELIM_CAPTURE) === array('', $A, $C, "$D$E$F", $A, $C, "def", $A, $C, '') ? 'OK' : 'FAILED', "\n";
+
+// SPLIT_DELIM_CAPTURE + SPLIT_NO_EMPTY
+echo 'SPLIT_DELIM_CAPTURE + SPLIT_NO_EMPTY: ', ut_regexp_split($oo, $ro, $subject, -1, Regexp::SPLIT_DELIM_CAPTURE | Regexp::SPLIT_NO_EMPTY) === array($A, $C, "$D$E$F", $A, $C, "def", $A, $C) ? 'OK' : 'FAILED', "\n";
 
 if (!$oo) {
+    echo "\n";
     $oo = TRUE;
     goto start_test_suite;
 }
 ?>
 --EXPECTF--
-Warning: regexp_create() expects at least 1 parameter, 0 given in %s on line %d
-NULL
-Limit to 1/4: OK
-Limit to 2/4: OK
-SPLIT_NO_EMPTY: OK
-OFFSET_CAPTURE: OK
 
-Warning: Regexp::__construct() expects at least 1 parameter, 0 given in %s on line %d
-NULL
+Warning: regexp_split() expects at least 2 parameters, 1 given in %s on line %d
+
+Warning: regexp_split(): bad arguments in %s on line %d
+bool(false)
+
+Warning: regexp_split() expects at most 4 parameters, 5 given in %s on line %d
+
+Warning: regexp_split(): bad arguments in %s on line %d
+bool(false)
 Limit to 1/4: OK
 Limit to 2/4: OK
 SPLIT_NO_EMPTY: OK
 OFFSET_CAPTURE: OK
+SPLIT_DELIM_CAPTURE: OK
+SPLIT_DELIM_CAPTURE + SPLIT_NO_EMPTY: OK
+
+
+Warning: Regexp::split() expects at least 1 parameter, 0 given in %s on line %d
+
+Warning: Regexp::split(): bad arguments in %s on line %d
+bool(false)
+
+Warning: Regexp::split() expects at most 3 parameters, 4 given in %s on line %d
+
+Warning: Regexp::split(): bad arguments in %s on line %d
+bool(false)
+Limit to 1/4: OK
+Limit to 2/4: OK
+SPLIT_NO_EMPTY: OK
+OFFSET_CAPTURE: OK
+SPLIT_DELIM_CAPTURE: OK
+SPLIT_DELIM_CAPTURE + SPLIT_NO_EMPTY: OK
