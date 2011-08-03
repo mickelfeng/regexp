@@ -12,10 +12,10 @@
 
 #include <zend_exceptions.h>
 
-#define REGEXP_PARSE_VOID_ARGS(name, reset)                                                                               \
+#define REGEXP_PARSE_VOID_ARGS(reset)                                                                                     \
     do {                                                                                                                  \
         if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "O", &object, Regexp_ce_ptr)) { \
-            intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, name ": bad arguments", 0 TSRMLS_CC);                          \
+            intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "bad arguments", 0 TSRMLS_CC);                                 \
             RETURN_FALSE;                                                                                                 \
         }                                                                                                                 \
         ro = zend_object_store_get_object(object TSRMLS_CC);                                                              \
@@ -39,7 +39,7 @@
         to = NULL;                                                                         \
         to_len = 0;                                                                        \
         intl_convert_utf8_to_utf16(&to, &to_len, from, from_len, REGEXP_ERROR_CODE_P(ro)); \
-        REGEXP_CHECK_STATUS(ro, "String conversion of " #from " to UTF-16 failed");        \
+        REGEXP_CHECK_STATUS(ro, "string conversion of " #from " to UTF-16 failed");        \
     } while (0);
 
 #define UTF16_TO_UTF8(ro, to, to_len, from, from_len)                                      \
@@ -47,7 +47,7 @@
         to = NULL;                                                                         \
         to_len = 0;                                                                        \
         intl_convert_utf16_to_utf8(&to, &to_len, from, from_len, REGEXP_ERROR_CODE_P(ro)); \
-        REGEXP_CHECK_STATUS(ro, "String conversion of " #from " to UTF-8 failed");         \
+        REGEXP_CHECK_STATUS(ro, "string conversion of " #from " to UTF-8 failed");         \
     } while (0);
 
 #define REGEXP_SET_UTF16_SUBJECT(ro, usubject, usubject_len)
@@ -59,7 +59,7 @@
         l = uregex_start(ro->uregex, group, REGEXP_ERROR_CODE_P(ro));                                                        \
         intl_error_set_code(NULL, REGEXP_ERROR_CODE(ro) TSRMLS_CC);                                                          \
         if (U_FAILURE(REGEXP_ERROR_CODE(ro))) {                                                                              \
-            intl_errors_setf_custom_msg(REGEXP_ERROR_P(ro) TSRMLS_CC, "Error extracting start of group capture #%d", group); \
+            intl_errors_setf_custom_msg(REGEXP_ERROR_P(ro) TSRMLS_CC, "error extracting start of group capture #%d", group); \
             goto end;                                                                                                        \
         }                                                                                                                    \
     } while (0);
@@ -69,7 +69,7 @@
         u = uregex_end(ro->uregex, group, REGEXP_ERROR_CODE_P(ro));                                                        \
         intl_error_set_code(NULL, REGEXP_ERROR_CODE(ro) TSRMLS_CC);                                                        \
         if (U_FAILURE(REGEXP_ERROR_CODE(ro))) {                                                                            \
-            intl_errors_setf_custom_msg(REGEXP_ERROR_P(ro) TSRMLS_CC, "Error extracting end of group capture #%d", group); \
+            intl_errors_setf_custom_msg(REGEXP_ERROR_P(ro) TSRMLS_CC, "error extracting end of group capture #%d", group); \
             goto end;                                                                                                      \
         }                                                                                                                  \
     } while (0);
@@ -123,7 +123,7 @@ static void regexp_parse_error_to_string(UParseError pe, char *pattern, int32_t 
         intl_errors_setf_custom_msg(
             NULL,
             TSRMLS_CC
-            "regexp_create: unable to compile ICU regular expression, syntax error at line %d, offset %d:\n%.*s\n%.*s\n%*c\n%.*s\n",
+            "unable to compile ICU regular expression, syntax error at line %d, offset %d:\n%.*s\n%.*s\n%*c\n%.*s\n",
             pe.line,
             pe.offset,
             /* text before */
@@ -140,7 +140,7 @@ end:
         intl_errors_setf_custom_msg(
             NULL,
             TSRMLS_CC
-            "regexp_create: unable to compile ICU regular expression, syntax error at line %d, offset %d",
+            "unable to compile ICU regular expression, syntax error at line %d, offset %d",
             pe.line,
             pe.offset
         );
@@ -198,7 +198,7 @@ static void regexp_ctor(INTERNAL_FUNCTION_PARAMETERS)
     }
     ro = (Regexp_object *) zend_object_store_get_object(object TSRMLS_CC);
     intl_convert_utf8_to_utf16(&upattern, &upattern_len, pattern, pattern_len, REGEXP_ERROR_CODE_P(ro));
-    INTL_CTOR_CHECK_STATUS(ro, "String conversion of pattern to UTF-16 failed");
+    INTL_CTOR_CHECK_STATUS(ro, "string conversion of pattern to UTF-16 failed");
     ro->uregex = uregex_open(upattern, upattern_len, flags, &pe, REGEXP_ERROR_CODE_P(ro));
     efree(upattern);
     if (U_FAILURE(REGEXP_ERROR_CODE(ro))) {
@@ -206,7 +206,7 @@ static void regexp_ctor(INTERNAL_FUNCTION_PARAMETERS)
         if (-1 != pe.line) {
             regexp_parse_error_to_string(pe, pattern, pattern_len);
         } else {
-            intl_error_set_custom_msg(NULL, "regexp_create: unable to compile ICU regular expression", 0 TSRMLS_CC);
+            intl_error_set_custom_msg(NULL, "unable to compile ICU regular expression", 0 TSRMLS_CC);
         }
         zval_dtor(object);
         RETURN_NULL();
@@ -241,7 +241,7 @@ PHP_FUNCTION(regexp_match)
     REGEXP_METHOD_INIT_VARS
 
     if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|zll", &object, Regexp_ce_ptr, &subject, &subject_len, &subpats, &flags, &start_cp_offset)) {
-        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_match: bad arguments", 0 TSRMLS_CC);
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "bad arguments", 0 TSRMLS_CC);
         RETURN_FALSE;
     }
     if (NULL != subpats) {
@@ -249,7 +249,7 @@ PHP_FUNCTION(regexp_match)
         array_init(subpats);
     }
     if (0 != (flags & ~(OFFSET_CAPTURE))) {
-        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_match: invalid flag(s)", 0 TSRMLS_CC);
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "invalid flag(s)", 0 TSRMLS_CC);
         RETURN_FALSE;
     }
 
@@ -258,9 +258,9 @@ PHP_FUNCTION(regexp_match)
     UTF8_TO_UTF16(ro, usubject, usubject_len, subject, subject_len);
     UTF16_CP_TO_CU(usubject, usubject_len, start_cp_offset, start_cu_offset);
     uregex_setText(ro->uregex, usubject, usubject_len, REGEXP_ERROR_CODE_P(ro));
-    REGEXP_CHECK_STATUS(ro, "Error setting text");
+    REGEXP_CHECK_STATUS(ro, "error setting text");
     res = uregex_find(ro->uregex, start_cu_offset, REGEXP_ERROR_CODE_P(ro));
-    REGEXP_CHECK_STATUS(ro, "Error finding pattern");
+    REGEXP_CHECK_STATUS(ro, "error finding pattern");
     if (res && NULL != subpats) {
         int i;
         char *group;
@@ -269,7 +269,7 @@ PHP_FUNCTION(regexp_match)
         int32_t l, u;
 
         group_count = uregex_groupCount(ro->uregex, REGEXP_ERROR_CODE_P(ro));
-        REGEXP_CHECK_STATUS(ro, "Error counting groups");
+        REGEXP_CHECK_STATUS(ro, "error counting groups");
         for (i = 0; i <= group_count; i++) {
             REGEXP_GROUP_START(ro, i, l);
             REGEXP_GROUP_END(ro, i, u);
@@ -314,11 +314,11 @@ PHP_FUNCTION(regexp_match_all)
     REGEXP_METHOD_INIT_VARS
 
     if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|zll", &object, Regexp_ce_ptr, &subject, &subject_len, &subpats, &flags, &start_cp_offset)) {
-        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_match_all: bad arguments", 0 TSRMLS_CC);
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "bad arguments", 0 TSRMLS_CC);
         RETURN_FALSE;
     }
     if (0 != (flags & ~(OFFSET_CAPTURE|MATCH_ALL_PATTERN_ORDER|MATCH_ALL_SET_ORDER))) {
-        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_match_all: invalid flag(s)", 0 TSRMLS_CC);
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "invalid flag(s)", 0 TSRMLS_CC);
         RETURN_FALSE;
     }
 
@@ -327,12 +327,12 @@ PHP_FUNCTION(regexp_match_all)
     UTF8_TO_UTF16(ro, usubject, usubject_len, subject, subject_len);
     UTF16_CP_TO_CU(usubject, usubject_len, start_cp_offset, start_cu_offset);
     uregex_setText(ro->uregex, usubject, usubject_len, REGEXP_ERROR_CODE_P(ro));
-    REGEXP_CHECK_STATUS(ro, "Error setting text");
+    REGEXP_CHECK_STATUS(ro, "error setting text");
     if (NULL != subpats) {
         zval_dtor(subpats);
         array_init(subpats);
         group_count = uregex_groupCount(ro->uregex, REGEXP_ERROR_CODE_P(ro));
-        REGEXP_CHECK_STATUS(ro, "Error counting groups");
+        REGEXP_CHECK_STATUS(ro, "error counting groups");
 
         if ((flags & MATCH_ALL_PATTERN_ORDER)) {
             Zres = mem_new_n(*Zres, group_count + 1);
@@ -345,7 +345,7 @@ PHP_FUNCTION(regexp_match_all)
     }
     if (0 != start_cp_offset) {
         uregex_reset(ro->uregex, start_cu_offset, REGEXP_ERROR_CODE_P(ro));
-        REGEXP_CHECK_STATUS(ro, "Error setting start region");
+        REGEXP_CHECK_STATUS(ro, "error setting start region");
     }
     while (uregex_findNext(ro->uregex, REGEXP_ERROR_CODE_P(ro))) {
         match_count++;
@@ -383,7 +383,7 @@ PHP_FUNCTION(regexp_match_all)
             }
         }
     }
-    REGEXP_CHECK_STATUS(ro, "Error finding pattern");
+    REGEXP_CHECK_STATUS(ro, "error finding pattern");
     if ((flags & MATCH_ALL_PATTERN_ORDER)) {
         for (i = 0; i <= group_count; i++) {
             zend_hash_next_index_insert(Z_ARRVAL_P(subpats), &Zres[i], sizeof(zval *), NULL);
@@ -414,10 +414,10 @@ PHP_FUNCTION(regexp_get_pattern)
     int32_t upattern_len = 0;
     REGEXP_METHOD_INIT_VARS
 
-    REGEXP_PARSE_VOID_ARGS("regexp_get_pattern", TRUE);
+    REGEXP_PARSE_VOID_ARGS(TRUE);
 
     upattern = uregex_pattern(ro->uregex, &upattern_len, REGEXP_ERROR_CODE_P(ro));
-    REGEXP_CHECK_STATUS(ro, "Error retrieving pattern");
+    REGEXP_CHECK_STATUS(ro, "error retrieving pattern");
 
     UTF16_TO_UTF8(ro, pattern, pattern_len, upattern, upattern_len);
     RETURN_STRINGL(pattern, pattern_len, 0);
@@ -431,7 +431,7 @@ PHP_FUNCTION(regexp_get_flags)
     int32_t flags = 0;
     REGEXP_METHOD_INIT_VARS
 
-    REGEXP_PARSE_VOID_ARGS("regexp_get_flags", TRUE);
+    REGEXP_PARSE_VOID_ARGS(TRUE);
 
     flags = uregex_flags(ro->uregex, REGEXP_ERROR_CODE_P(ro));
 
@@ -466,7 +466,7 @@ PHP_FUNCTION(regexp_replace)
     REGEXP_METHOD_INIT_VARS
 
     if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss", &object, Regexp_ce_ptr, &subject, &subject_len, &replacement, &replacement_len)) {
-        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_replace: bad arguments", 0 TSRMLS_CC);
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "bad arguments", 0 TSRMLS_CC);
         RETURN_FALSE;
     }
 
@@ -476,17 +476,17 @@ PHP_FUNCTION(regexp_replace)
     UTF8_TO_UTF16(ro, ureplacement, ureplacement_len, replacement, replacement_len);
 
     uregex_setText(ro->uregex, usubject, usubject_len, REGEXP_ERROR_CODE_P(ro));
-    REGEXP_CHECK_STATUS(ro, "Error setting text");
+    REGEXP_CHECK_STATUS(ro, "error setting text");
 
     uresult_len = uregex_replaceAll(ro->uregex, ureplacement, ureplacement_len, NULL, 0, REGEXP_ERROR_CODE_P(ro));
     if (U_BUFFER_OVERFLOW_ERROR != REGEXP_ERROR_CODE(ro)) {
-        intl_errors_set_custom_msg(REGEXP_ERROR_P(ro), "regexp_replace: replacing failed", 0 TSRMLS_CC);
+        intl_errors_set_custom_msg(REGEXP_ERROR_P(ro), "replacing failed", 0 TSRMLS_CC);
         goto end;
     }
     intl_error_reset(REGEXP_ERROR_P(ro) TSRMLS_CC);
     uresult = emalloc((uresult_len + 1) * sizeof(*uresult));
     /*uresult_len = */uregex_replaceAll(ro->uregex, ureplacement, ureplacement_len, uresult, uresult_len, REGEXP_ERROR_CODE_P(ro));
-    REGEXP_CHECK_STATUS(ro, "Error while replacing");
+    REGEXP_CHECK_STATUS(ro, "error while replacing");
 
     UTF16_TO_UTF8(ro, result, result_len, uresult, uresult_len);
 
@@ -527,12 +527,12 @@ PHP_FUNCTION(regexp_replace_callback)
     REGEXP_METHOD_INIT_VARS
 
     if (FAILURE == zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "OsZ", &object, Regexp_ce_ptr, &subject, &subject_len, &Zcallback)) {
-        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "regexp_replace: bad arguments", 0 TSRMLS_CC);
+        intl_error_set(NULL, U_ILLEGAL_ARGUMENT_ERROR, "bad arguments", 0 TSRMLS_CC);
         RETURN_FALSE;
     }
     REGEXP_METHOD_FETCH_OBJECT(TRUE);
     if (!zend_is_callable(*Zcallback, 0, &callback TSRMLS_CC)) {
-        php_error_docref(NULL TSRMLS_CC, E_WARNING, "requires a valid callback", callback);
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "valid callback required", callback);
         //intl_errors_set_custom_msg(REGEXP_ERROR_P(ro), "regexp_replace_callback: requires a valid callback", 0 TSRMLS_CC);
         efree(callback);
         RETURN_FALSE;
@@ -540,9 +540,9 @@ PHP_FUNCTION(regexp_replace_callback)
     UTF8_TO_UTF16(ro, usubject, usubject_len, subject, subject_len);
     usubject_cp_len = u_countChar32(usubject, usubject_len);
     uregex_setText(ro->uregex, usubject, usubject_len, REGEXP_ERROR_CODE_P(ro));
-    REGEXP_CHECK_STATUS(ro, "Error setting text");
+    REGEXP_CHECK_STATUS(ro, "error setting text");
     group_count = uregex_groupCount(ro->uregex, REGEXP_ERROR_CODE_P(ro));
-    REGEXP_CHECK_STATUS(ro, "Error counting groups");
+    REGEXP_CHECK_STATUS(ro, "error counting groups");
     MAKE_STD_ZVAL(match_groups);
     array_init(match_groups);
     zargs[0] = &match_groups;
@@ -570,7 +570,7 @@ PHP_FUNCTION(regexp_replace_callback)
             zval_ptr_dtor(&retval_ptr);
         } else {
             if (!EG(exception)) {
-                php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call custom replacement function");
+                php_error_docref(NULL TSRMLS_CC, E_WARNING, "unable to call custom replacement callback");
             }
             goto end; // is it appropriate?
         }
@@ -632,10 +632,10 @@ PHP_FUNCTION(regexp_split)
     UTF8_TO_UTF16(ro, usubject, usubject_len, subject, subject_len);
 
     uregex_setText(ro->uregex, usubject, usubject_len, REGEXP_ERROR_CODE_P(ro));
-    REGEXP_CHECK_STATUS(ro, "Error setting text");
+    REGEXP_CHECK_STATUS(ro, "error setting text");
     if (0 != (flags & SPLIT_DELIM_CAPTURE)) {
         group_count = uregex_groupCount(ro->uregex, REGEXP_ERROR_CODE_P(ro));
-        REGEXP_CHECK_STATUS(ro, "Error counting groups");
+        REGEXP_CHECK_STATUS(ro, "error counting groups");
     }
     /* We don't use uregex_split, it has few "limitations" */
     for (i = 1; i < limit && uregex_findNext(ro->uregex, REGEXP_ERROR_CODE_P(ro)); i++) {
@@ -691,7 +691,7 @@ end:
 PHP_FUNCTION(regexp_get_error_code)
 {
     REGEXP_METHOD_INIT_VARS
-    REGEXP_PARSE_VOID_ARGS("regexp_get_error_code", FALSE);
+    REGEXP_PARSE_VOID_ARGS(FALSE);
 
     RETURN_LONG((long) REGEXP_ERROR_CODE(ro));
 }
@@ -701,7 +701,7 @@ PHP_FUNCTION(regexp_get_error_message)
     const char *message = NULL;
 
     REGEXP_METHOD_INIT_VARS
-    REGEXP_PARSE_VOID_ARGS("regexp_get_error_message", FALSE);
+    REGEXP_PARSE_VOID_ARGS(FALSE);
 
     message = intl_error_get_message(REGEXP_ERROR_P(ro) TSRMLS_CC);
     RETURN_STRING(message, 0);

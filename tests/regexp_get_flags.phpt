@@ -51,7 +51,7 @@ int(0)
 
 Warning: regexp_get_flags() expects exactly 1 parameter, 2 given in %s on line %d
 
-Warning: regexp_get_flags(): regexp_get_flags: bad arguments in %s on line %d
+Warning: regexp_get_flags(): bad arguments in %s on line %d
 bool(false)
 Insensitive (%d):
 int(0)
@@ -64,7 +64,7 @@ int(0)
 
 Warning: Regexp::getFlags() expects exactly 0 parameters, 1 given in %s on line %d
 
-Warning: Regexp::getFlags(): regexp_get_flags: bad arguments in %s on line %d
+Warning: Regexp::getFlags(): bad arguments in %s on line %d
 bool(false)
 Insensitive (%d):
 int(0)
