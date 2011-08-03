@@ -542,6 +542,7 @@ PHP_FUNCTION(regexp_replace_callback)
     uregex_setText(ro->uregex, usubject, usubject_len, REGEXP_ERROR_CODE_P(ro));
     REGEXP_CHECK_STATUS(ro, "Error setting text");
     group_count = uregex_groupCount(ro->uregex, REGEXP_ERROR_CODE_P(ro));
+    REGEXP_CHECK_STATUS(ro, "Error counting groups");
     MAKE_STD_ZVAL(match_groups);
     array_init(match_groups);
     zargs[0] = &match_groups;
@@ -607,6 +608,7 @@ PHP_FUNCTION(regexp_split)
     char *group = NULL;
     int group_len = 0;
     long flags = 0;
+    int32_t group_count = 0;
     int i;
 
     REGEXP_METHOD_INIT_VARS
@@ -631,7 +633,11 @@ PHP_FUNCTION(regexp_split)
 
     uregex_setText(ro->uregex, usubject, usubject_len, REGEXP_ERROR_CODE_P(ro));
     REGEXP_CHECK_STATUS(ro, "Error setting text");
-    /* We don't use uregex_split, it has a few "limitations" */
+    if (0 != (flags & SPLIT_DELIM_CAPTURE)) {
+        group_count = uregex_groupCount(ro->uregex, REGEXP_ERROR_CODE_P(ro));
+        REGEXP_CHECK_STATUS(ro, "Error counting groups");
+    }
+    /* We don't use uregex_split, it has few "limitations" */
     for (i = 1; i < limit && uregex_findNext(ro->uregex, REGEXP_ERROR_CODE_P(ro)); i++) {
         int32_t l, u;
 
@@ -643,6 +649,21 @@ PHP_FUNCTION(regexp_split)
                 add_next_index_stringl(return_value, group, group_len, FALSE);
             } else {
                 add_index_stringl(return_value, u_countChar32(usubject, last), group, group_len, FALSE);
+            }
+        }
+        if (0 != (flags & SPLIT_DELIM_CAPTURE)) {
+            int j;
+            int32_t gu, gl;
+
+            for (j = 1; j <= group_count; j++) {
+                REGEXP_GROUP_START(ro, j, gl);
+                REGEXP_GROUP_END(ro, j, gu);
+                UTF16_TO_UTF8(ro, group, group_len, usubject + gl, gu - gl);
+                if (!(flags & OFFSET_CAPTURE)) {
+                    add_next_index_stringl(return_value, group, group_len, FALSE);
+                } else {
+                    add_index_stringl(return_value, u_countChar32(usubject, gl), group, group_len, FALSE);
+                }
             }
         }
         last = u;
