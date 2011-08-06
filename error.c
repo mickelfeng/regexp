@@ -25,7 +25,7 @@ int intl_error_non_quiet_set_code(UErrorCode err_code TSRMLS_DC)
         err->code = err_code;
         if (U_FAILURE(err_code)) {
             if (0 != INTL_G(error_level)) {
-                php_error_docref(NULL TSRMLS_CC, INTL_G(error_level), "%s(%d)", u_errorName(err_code), err_code);
+                php_error_docref(NULL TSRMLS_CC, INTL_G(error_level), "%s (%d)", u_errorName(err_code), err_code);
             }
             return FALSE;
         }
