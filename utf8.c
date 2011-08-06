@@ -572,3 +572,265 @@ void utf8_replace_len_from_utf16(
     memcpy(*string + utf8_cu_start_match_offset, replacement, replacement_len);
     *string_len += diff_len;
 }
+
+static int octal_digit(char c)
+{
+    if (c >= '0' && c <= '7') {
+        return (c - '0');
+    }
+
+    return -1;
+}
+
+static int hexadecimal_digit(char c)
+{
+    if (c >= '0' && c <= '9') {
+        return (c - '0');
+    }
+    if (c >= 'a' && c <= 'f') {
+        return (c - ('a' - 10));
+    }
+    if (c >= 'A' && c <= 'F') {
+        return (c - ('A' - 10));
+    }
+
+    return -1;
+}
+
+#define STRINGL(x) (sizeof(x) - 1)
+
+UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target, int32_t *target_len, UErrorCode *status)
+{
+    UChar32 lead;
+    const char *end;
+    int32_t cucount, i;
+    char *s, *lead_offset;
+    UBool trail_expected = FALSE;
+    int base, mindigits, maxdigits;
+
+    /*if (NULL == **target || *target_len < 0) {
+        *status = U_ILLEGAL_ARGUMENT_ERROR;
+        return FALSE;
+    }*/
+
+    end = string + string_len;
+    *target_len = string_len;
+    for (s = string; s < end; /* NOP */) {
+        cucount = utf8_count_bytes[*string];
+        if (cucount < 0 || cucount > U8_MAX_LENGTH) {
+            *status = U_ILLEGAL_CHAR_FOUND;
+            return FALSE;
+        }
+        if (string_len < cucount) {
+            *status = U_TRUNCATED_CHAR_FOUND;
+            return FALSE;
+        } else {
+            s += cucount;
+        }
+        if (1 == cucount && '\\' == *(s - 1)) {
+            mindigits = 0;
+            switch (*s) {
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                    mindigits = 1;
+                    maxdigits = 3;
+                    base = 8;
+                    break;
+                case 'a':
+                case 'b':
+                case 'e':
+                case 'f':
+                case 'n':
+                case 'r':
+                case 't':
+                case 'v':
+                case '\\':
+                    *target_len--;
+                    s++;
+                    break;
+                case 'x': // \xXX
+                    mindigits = maxdigits = 2;
+                    base = 16;
+                    *target_len -= STRINGL("\\xXX");
+                    break;
+                case 'u': // \uXXXX
+                    mindigits = maxdigits = 4;
+                    base = 16;
+                    break;
+                case 'U': // \UXXXXXXXX
+                    mindigits = maxdigits = 8;
+                    base = 16;
+                    break;
+            }
+            if (mindigits > 0) {
+                int n = 0, digit;
+                char c;
+                UChar32 result = 0;
+
+                s++;
+                while (s < end && n < maxdigits) {
+                    digit = (8 == base ? octal_digit(*s) : hexadecimal_digit(*s));
+                    if (digit < 0) {
+                        break;
+                    }
+                    result = (result << (8 == base ? 3 : 4)) | digit;
+                    n++;
+                    s++;
+                }
+                if (n < mindigits) {
+                    *status = U_ILLEGAL_ESCAPE_SEQUENCE;
+                    return FALSE;
+                }
+                if (result < 0 || result > UCHAR_MAX_VALUE || U_IS_UNICODE_NONCHAR(result)) {
+                    *status = U_ILLEGAL_CHAR_FOUND;
+                    return FALSE;
+                }
+                if (4 == mindigits) { // \uXXXX
+                    if (!U_IS_SURROGATE(result)) {
+                        if (trail_expected) {
+                            *status = U_ILLEGAL_ESCAPE_SEQUENCE;
+                            return FALSE;
+                        } else {
+                            *target_len -= STRINGL("\\uXXXX") - U8_LENGTH(result);
+                        }
+                    } else if (U16_IS_SURROGATE_LEAD(result)) {
+                        trail_expected = TRUE;
+                        lead = result;
+                        lead_offset = s;
+                    } else if (U16_IS_SURROGATE_TRAIL(result)) {
+                        if (trail_expected && (STRINGL("\\uXXXX") == s - lead_offset)) {
+                            trail_expected = FALSE;
+                            *target_len -= STRINGL("\\uXXXX\\uXXXX") - U8_LENGTH(U16_GET_SUPPLEMENTARY(lead, result));
+                        } else {
+                            *status = U_ILLEGAL_ESCAPE_SEQUENCE;
+                            return FALSE;
+                        }
+                    }
+                } else if (8 == mindigits) { // \UXXXXXXXX
+                    *target_len -= STRINGL("\\Uxxxxxxxx") - U8_LENGTH(result);
+                } else if (1 == mindigits) { // \[0-7]{1,3}
+                    *target_len -= (STRINGL("\\") + n) - U8_LENGTH(result);
+                }
+            }
+        }
+    }
+    if (trail_expected) {
+        *status = U_ILLEGAL_ESCAPE_SEQUENCE;
+        return FALSE;
+    }
+
+    /*if (NULL == **target) {
+        *status = U_BUFFER_OVERFLOW_ERROR;
+        return FALSE;
+    }*/
+
+    *target = mem_new_n(**target, *target_len + 1);
+    for (s = string, i = 0; s < end; /* NOP */) {
+        if ('\\' != *s) {
+            *(*target + i++) = *s++;
+        } else {
+            mindigits = 0;
+            switch (*++s) {
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                    mindigits = 1;
+                    maxdigits = 3;
+                    base = 8;
+                    break;
+                case 'a':
+                    *(*target + i++) = '\a';
+                    s++;
+                    break;
+                case 'b':
+                    *(*target + i++) = '\b';
+                    s++;
+                    break;
+                case 'e':
+                    *(*target + i++) = '\e';
+                    s++;
+                    break;
+                case 'f':
+                    *(*target + i++) = '\f';
+                    s++;
+                    break;
+                case 'n':
+                    *(*target + i++) = '\n';
+                    s++;
+                    break;
+                case 'r':
+                    *(*target + i++) = '\r';
+                    s++;
+                    break;
+                case 't':
+                    *(*target + i++) = '\t';
+                    s++;
+                    break;
+                case 'v':
+                    *(*target + i++) = '\v';
+                    s++;
+                    break;
+                case '\\':
+                    *(*target + i++) = '\\';
+                    s++;
+                    break;
+                case 'x': // \xXX
+                    mindigits = maxdigits = 2;
+                    base = 16;
+                    break;
+                case 'u': // \uXXXX
+                    mindigits = maxdigits = 4;
+                    base = 16;
+                    break;
+                case 'U': // \UXXXXXXXX
+                    mindigits = maxdigits = 8;
+                    base = 16;
+                    break;
+                default:
+                    *(*target + i++) = '\\';
+                    *(*target + i++) = *s;
+            }
+            if (mindigits > 0) {
+                int n = 0, digit;
+                char c;
+                UChar32 result = 0;
+
+                s++;
+                while (s < end && n < maxdigits) {
+                    digit = (8 == base ? octal_digit(*s) : hexadecimal_digit(*s));
+                    if (digit < 0) {
+                        break;
+                    }
+                    result = (result << (8 == base ? 3 : 4)) | digit;
+                    n++;
+                    s++;
+                }
+                if (4 == mindigits) {
+                    if (!U_IS_SURROGATE(result)) {
+                        U8_APPEND_UNSAFE(*target, i, result);
+                    } else if (U16_IS_SURROGATE_LEAD(result)) {
+                        lead = result;
+                    } else if (U16_IS_SURROGATE_TRAIL(result)) {
+                        U8_APPEND_UNSAFE(*target, i, U16_GET_SUPPLEMENTARY(lead, result));
+                    }
+                } else if (8 == mindigits) {
+                    U8_APPEND_UNSAFE(*target, i, result);
+                }
+            }
+        }
+    }
+    *(*target + *target_len) = '\0';
+
+    return TRUE;
+}

@@ -1326,6 +1326,36 @@ end:
     }
 }
 
+PHP_FUNCTION(utf8_unescape) // TODO: tests
+{
+    UBool ret;
+    char *string = NULL;
+    int string_len = 0;
+    char *result = NULL;
+    int32_t result_len = 0;
+    zend_bool quiet = TRUE;
+    UErrorCode status = U_ZERO_ERROR;
+
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|b", &string, &string_len, &quiet)) {
+        return;
+    }
+    intl_error_reset(NULL TSRMLS_CC);
+    ret = utf8_unescape((const uint8_t *) string, string_len, &result, &result_len, &status);
+    if (quiet) {
+        intl_error_set_code(NULL, status TSRMLS_CC);
+    } else {
+        intl_error_non_quiet_set_code(status TSRMLS_CC);
+    }
+    if (!ret) {
+        if (NULL != result) {
+            efree(result);
+        }
+        RETURN_FALSE;
+    }
+
+    RETURN_STRINGL(result, result_len, FALSE);
+}
+
 /**
  * TEST:
  * - [lr]?trim
@@ -1336,6 +1366,7 @@ end:
  * - word_count
  * - validate
  * - wordwrap
+ * - unescape
  **/
 
 /**

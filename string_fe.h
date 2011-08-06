@@ -35,5 +35,6 @@ PHP_FE(utf8_rtrim, arginfo_trim)
 PHP_FE(utf8_ltrim, arginfo_trim)
 
 PHP_FE(utf8_validate, arginfo_validate)
+PHP_FE(utf8_unescape, arginfo_validate)
 
 PHP_FE(utf8_ireplace, arginfo_ireplace)
