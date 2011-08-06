@@ -154,7 +154,7 @@ zend_function_entry Regexp_class_functions[] = {
     PHP_ME_MAPPING(getFlags, regexp_get_flags, ainfo_regexp_void, ZEND_ACC_PUBLIC)
     PHP_ME_MAPPING(getErrorCode, regexp_get_error_code, ainfo_regexp_void, ZEND_ACC_PUBLIC)
     PHP_ME_MAPPING(getErrorMessage, regexp_get_error_message, ainfo_regexp_void, ZEND_ACC_PUBLIC)
-    { NULL, NULL, NULL }
+    PHP_FE_END
 };
 
 void regexp_register_Regexp_class(TSRMLS_D)
