@@ -713,7 +713,12 @@ UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target,
                         }
                     }
                 } else if (8 == mindigits) { // \UXXXXXXXX
-                    *target_len -= STRINGL("\\Uxxxxxxxx") - U8_LENGTH(result);
+                    if (!U_IS_UNICODE_CHAR(result)) {
+                        *status = U_ILLEGAL_ESCAPE_SEQUENCE;
+                        return FALSE;
+                    } else {
+                        *target_len -= STRINGL("\\Uxxxxxxxx") - U8_LENGTH(result);
+                    }
                 } else if (1 == mindigits) { // \[0-7]{1,3}
                     *target_len -= (STRINGL("\\") + n) - U8_LENGTH(result);
                 }
