@@ -8,13 +8,27 @@ static intl_error* intl_g_error_get(TSRMLS_D)
 
 void intl_errors_setf_custom_msg(intl_error *err TSRMLS_DC, char *format, ...)
 {
-    char *msg;
     va_list args;
 
-    va_start(args, format);
-    vspprintf(&msg, 0, format, args);
-    va_end(args);
-    intl_errors_set_custom_msg(err, msg, FALSE TSRMLS_CC);
+    if (NULL == err) {
+        if (0 != INTL_G(error_level)) {
+            va_start(args, format);
+            php_verror(NULL, "", INTL_G(error_level), format, args TSRMLS_CC);
+            va_end(args);
+        }
+    } else {
+        char *msg;
+
+        if (NULL == err && NULL == (err = intl_g_error_get(TSRMLS_C))) {
+            return;
+        }
+        intl_free_custom_error_msg(err TSRMLS_CC);
+        va_start(args, format);
+        vspprintf(&msg, 0, format, args); // check msg ?
+        va_end(args);
+        err->free_custom_error_message = TRUE;
+        err->custom_error_message = msg;
+    }
 }
 
 int intl_error_non_quiet_set_code(UErrorCode err_code TSRMLS_DC)
