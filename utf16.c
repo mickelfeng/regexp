@@ -56,7 +56,7 @@ void utf16_normalize(UChar **target, int32_t *target_len, const UChar *src, int3
     }
     *status = U_ZERO_ERROR;
     *target = mem_new_n(**target, *target_len + 1);
-    /* *target_len = */unorm_normalize(src, src_len, nm, target_len, *target, 0, status);
+    /* *target_len = */unorm_normalize(src, src_len, nm, 0, *target, *target_len + 1, status);
     if (U_FAILURE(*status)) {
         efree(*target);
         *target = NULL;
