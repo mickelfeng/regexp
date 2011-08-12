@@ -87,6 +87,12 @@ void utf8_fullcase(
         *target_len = src_len;
         return;
     }
+    if (0 == src_len) {
+        *target = mem_new(**target);
+        **target = '\0';
+        *target_len = 0;
+        return;
+    }
     cm = ucasemap_open(locale, U_FOLD_CASE_DEFAULT, status);
     if (U_FAILURE(*status)) {
         return;
@@ -98,7 +104,7 @@ void utf8_fullcase(
     }
     *status = U_ZERO_ERROR;
     *target = mem_new_n(**target, *target_len + 1);
-    /* *target_len = */unicode_case_mapping[ct].u8_func(cm, *target, *target_len, src, src_len, status);
+    /* *target_len = */unicode_case_mapping[ct].u8_func(cm, *target, *target_len + 1, src, src_len, status);
     if (U_FAILURE(*status)) {
         efree(*target);
         *target = NULL;
