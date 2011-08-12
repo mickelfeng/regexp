@@ -18,6 +18,13 @@ foreach ($functions as $f) {
     var_dump($f());
     var_dump($f(INITIAL_VALUE, 'en', 3));
 }
+
+echo "##### Empty string #####\n";
+foreach ($functions as $f) {
+    $f = 'utf8_' . $f;
+    var_dump($f(''));
+}
+
 echo "##### Default locale #####\n";
 foreach ($locales as $l => $a) {
     ini_set('intl.default_locale', $l);
@@ -27,6 +34,7 @@ foreach ($locales as $l => $a) {
         echo $word === $a[$f] ? 'OK' : 'FAILED', ' (', $l, ' => ', $f, ')', "\n";
     }
 }
+
 echo "##### Explicit locale #####\n";
 foreach ($locales as $l => $a) {
     $word = INITIAL_VALUE;
@@ -55,6 +63,10 @@ NULL
 
 Warning: utf8_tolower() expects at most 2 parameters, 3 given in %s on line %d
 NULL
+##### Empty string #####
+string(0) ""
+string(0) ""
+string(0) ""
 ##### Default locale #####
 OK (fr => totitle)
 OK (fr => toupper)
