@@ -14,75 +14,77 @@ static intl_error* intl_g_error_get(TSRMLS_D)
 #define ICU_VER_LE(M, m, p) (ICU_VER <= INTIFY_VERSION(M, m, p))
 #define ICU_VER_GE(M, m, p) (ICU_VER >= INTIFY_VERSION(M, m, p))
 
-static const char *intl_error_name(UErrorCode err_code)
+static const char *intl_error_desc(UErrorCode err_code)
 {
     switch (err_code) {
         case U_ZERO_ERROR:
-            return "No error, no warning";
+            return "no error, no warning";
         case U_ILLEGAL_ARGUMENT_ERROR:
-            return "";
+            return "illegal or inappropriate argument";
         case U_MISSING_RESOURCE_ERROR:
-            return "The requested resource cannot be found";
+            return "the requested resource cannot be found";
         case U_INVALID_FORMAT_ERROR:
-            return "Data format is not what is expected";
+            return "data format is not what is expected";
         case U_FILE_ACCESS_ERROR:
-            return "U_INTERNAL_PROGRAM_ERROR";
+            return "the requested file cannot be found";
+        case U_INTERNAL_PROGRAM_ERROR:
+            return "bug in ICU's code";
         case U_MESSAGE_PARSE_ERROR:
-            return "Unable to parse a message (message format)";
+            return "unable to parse a message (message format)";
         case U_MEMORY_ALLOCATION_ERROR:
-            return "Memory allocation error";
+            return "memory allocation error";
         case U_INDEX_OUTOFBOUNDS_ERROR:
-            return "Trying to access the index that is out of bounds";
+            return "trying to access the index that is out of bounds";
         case U_PARSE_ERROR:
-            return "Equivalent to Java ParseException";
+            return "unexpected error while parsing";
         case U_INVALID_CHAR_FOUND:
-            return "Unmappable input sequence or invalid character";
+            return "unmappable input sequence or invalid character";
         case U_TRUNCATED_CHAR_FOUND:
-            return "Incomplete input sequence";
+            return "incomplete input sequence";
         case U_ILLEGAL_CHAR_FOUND:
-            return "Illegal input sequence/combination of input units";
+            return "illegal input sequence/combination of input units";
         case U_INVALID_TABLE_FORMAT:
-            return "Conversion table file found, but corrupted";
+            return "conversion table file found, but corrupted";
         case U_INVALID_TABLE_FILE:
-            return "Conversion table file not found";
+            return "conversion table file not found";
         case U_BUFFER_OVERFLOW_ERROR:
-            return "A result would not fit in the supplied buffer";
+            return "a result would not fit in the supplied buffer";
         case U_UNSUPPORTED_ERROR:
-            return "Requested operation not supported in current context";
+            return "requested operation not supported in current context";
         case U_RESOURCE_TYPE_MISMATCH:
-            return "An operation is requested over a resource that does not support it";
+            return "an operation is requested over a resource that does not support it";
         case U_ILLEGAL_ESCAPE_SEQUENCE:
             return "ISO-2022 illlegal escape sequence";
         case U_UNSUPPORTED_ESCAPE_SEQUENCE:
             return "ISO-2022 unsupported escape sequence";
         case U_NO_SPACE_AVAILABLE:
-            return "No space available for in-buffer expansion for Arabic shaping";
+            return "no space available for in-buffer expansion for Arabic shaping";
         case U_CE_NOT_FOUND_ERROR:
-            return "Currently used only while setting variable top, but can be used generally";
+            return "currently used only while setting variable top, but can be used generally";
         case U_PRIMARY_TOO_LONG_ERROR:
-            return "User tried to set variable top to a primary that is longer than two bytes";
+            return "user tried to set variable top to a primary that is longer than two bytes";
         case U_STATE_TOO_OLD_ERROR:
             return "ICU cannot construct a service from this state, as it is no longer supported";
         case U_TOO_MANY_ALIASES_ERROR:
-            return "There are too many aliases in the path to the requested resource. It is very possible that a circular alias definition has occured";
+            return "there are too many aliases in the path to the requested resource. It is very possible that a circular alias definition has occured";
         case U_ENUM_OUT_OF_SYNC_ERROR:
             return "UEnumeration out of sync with underlying collection";
         case U_INVARIANT_CONVERSION_ERROR:
-            return "Unable to convert a UChar* string to char* with the invariant converter";
+            return "unable to convert a UChar* string to char* with the invariant converter";
         case U_INVALID_STATE_ERROR:
-            return "Requested operation can not be completed with ICU in its current state";
+            return "requested operation can not be completed with ICU in its current state";
         case U_COLLATOR_VERSION_MISMATCH:
-            return "Collator version is not compatible with the base version";
+            return "collator version is not compatible with the base version";
         case U_USELESS_COLLATOR_ERROR:
-            return "Collator is options only and no base is specified";
+            return "collator is options only and no base is specified";
         case U_NO_WRITE_PERMISSION:
-            return "Attempt to modify read-only or constant data";
+            return "attempt to modify read-only or constant data";
 #if 0
         case :
             return "";
 #endif
         default:
-            return "Bogus error code";
+            return "bogus error code";
     }
 }
 
@@ -119,7 +121,7 @@ int intl_error_non_quiet_set_code(UErrorCode err_code TSRMLS_DC)
         err->code = err_code;
         if (U_FAILURE(err_code)) {
             if (0 != INTL_G(error_level)) {
-                php_error_docref(NULL TSRMLS_CC, INTL_G(error_level), "%s (%d)", intl_error_name(err_code), err_code);
+                php_error_docref(NULL TSRMLS_CC, INTL_G(error_level), "%s (%s/%d)", intl_error_desc(err_code), u_errorName(err_code), err_code);
             }
             return FALSE;
         }
