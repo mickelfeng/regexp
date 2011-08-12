@@ -398,6 +398,9 @@ static void fullcasemapping(INTERNAL_FUNCTION_PARAMETERS, UCaseType ct)
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|s", &string, &string_len, &locale, &locale_len)) {
         return;
     }
+    if (0 == string_len) {
+        RETURN_EMPTY_STRING();
+    }
     if (0 == locale_len) {
         locale = INTL_G(default_locale);
     }
