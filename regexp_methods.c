@@ -74,29 +74,6 @@
         }                                                                                                                  \
     } while (0);
 
-#define UTF16_CP_TO_CU(ustring, ustring_len, cp_offset, cu_offset)                                            \
-    do {                                                                                                      \
-        if (0 != cp_offset) {                                                                                 \
-            int32_t count_cp = u_countChar32(ustring, ustring_len);                                           \
-            if (cp_offset < 0) {                                                                              \
-                if (cp_offset < -count_cp) {                                                                  \
-                    intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
-                    RETVAL_FALSE;                                                                             \
-                    goto end;                                                                                 \
-                }                                                                                             \
-                cu_offset = ustring_len;                                                                      \
-                U16_BACK_N(ustring, 0, cu_offset, -cp_offset);                                                \
-            } else {                                                                                          \
-                if (cp_offset >= count_cp) {                                                                  \
-                    intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
-                    RETVAL_FALSE;                                                                             \
-                    goto end;                                                                                 \
-                }                                                                                             \
-                U16_FWD_N(ustring, cu_offset, ustring_len, cp_offset);                                        \
-            }                                                                                                 \
-        }                                                                                                     \
-    } while (0);
-
 static const UChar _UREGEXP_FAKE_USTR[] = { 0 };
 #define UREGEXP_FAKE_USTR _UREGEXP_FAKE_USTR, 0
 
@@ -302,14 +279,13 @@ PHP_FUNCTION(regexp_match_all)
     int match_count = 0;
     char *subject = NULL;
     int subject_len = 0;
-    UChar *usubject = NULL;
-    int32_t usubject_len = 0;
     zval *subpats = NULL;
     zval **Zres = NULL;
     int32_t start_cu_offset = 0;
     long start_cp_offset = 0;
     int32_t group_count = 0;
     long flags = 0;
+    UText ut = UTEXT_INITIALIZER;
 
     REGEXP_METHOD_INIT_VARS
 
@@ -324,9 +300,10 @@ PHP_FUNCTION(regexp_match_all)
 
     REGEXP_METHOD_FETCH_OBJECT(TRUE);
 
-    UTF8_TO_UTF16(ro, usubject, usubject_len, subject, subject_len);
-    UTF16_CP_TO_CU(usubject, usubject_len, start_cp_offset, start_cu_offset);
-    uregex_setText(ro->uregex, usubject, usubject_len, REGEXP_ERROR_CODE_P(ro));
+    utext_openUTF8(&ut, subject, subject_len, REGEXP_ERROR_CODE_P(ro));
+    REGEXP_CHECK_STATUS(ro, "error binding utext");
+    UTF8_CP_TO_CU(subject, subject_len, start_cp_offset, start_cu_offset);
+    uregex_setUText(ro->uregex, &ut, REGEXP_ERROR_CODE_P(ro));
     REGEXP_CHECK_STATUS(ro, "error setting text");
     if (NULL != subpats) {
         zval_dtor(subpats);
@@ -350,8 +327,6 @@ PHP_FUNCTION(regexp_match_all)
     while (uregex_findNext(ro->uregex, REGEXP_ERROR_CODE_P(ro))) {
         match_count++;
         if (NULL != subpats) {
-            char *group;
-            int group_len;
             int32_t l, u;
             zval *match_groups;
 
@@ -363,18 +338,17 @@ PHP_FUNCTION(regexp_match_all)
             for (i = 0; i <= group_count; i++) {
                 REGEXP_GROUP_START(ro, i, l);
                 REGEXP_GROUP_END(ro, i, u);
-                UTF16_TO_UTF8(ro, group, group_len, usubject + l, u - l);
                 if ((flags & MATCH_ALL_PATTERN_ORDER)) {
                     if (!(flags & OFFSET_CAPTURE)) {
-                        add_next_index_stringl(Zres[i], group, group_len, FALSE);
+                        add_next_index_stringl(Zres[i], subject + l, u - l, TRUE);
                     } else {
-                        add_index_stringl(Zres[i], u_countChar32(usubject, l), group, group_len, FALSE);
+                        add_index_stringl(Zres[i], utf8_countChar32(subject, l), subject + l, u - l, TRUE);
                     }
                 } else {
                     if (!(flags & OFFSET_CAPTURE)) {
-                        add_index_stringl(match_groups, i, group, group_len, FALSE);
+                        add_index_stringl(match_groups, i, subject + l, u - l, TRUE);
                     } else {
-                        add_index_stringl(match_groups, u_countChar32(usubject, l), group, group_len, FALSE);
+                        add_index_stringl(match_groups, utf8_countChar32(subject, l), subject + l, u - l, TRUE);
                     }
                 }
             }
@@ -400,10 +374,8 @@ end:
         }
         RETVAL_FALSE;
     }
-    if (NULL != usubject) {
-        REGEXP_RESET(ro);
-        efree(usubject);
-    }
+    REGEXP_RESET(ro);
+    utext_close(&ut);
 }
 
 PHP_FUNCTION(regexp_get_pattern)

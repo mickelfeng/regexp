@@ -339,7 +339,7 @@ $b->add(
 )
 ->add(
     function ($string) {
-        preg_match('/^\p{Ll}+$/uD', $string);
+        preg_match('/^\p{Ll}+$/uD', $string); // not fair ? pattern should be cached
     },
     "preg_match"
 )
