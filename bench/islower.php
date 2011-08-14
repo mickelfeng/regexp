@@ -323,26 +323,37 @@ $string = 'บท ที่๑พายุ ไซโคลน
 ที่ บ้าน โยก ไป มา และ ลม ก็ คราง หวีด หวือ';
 
 
+$ro = new Regexp('^\p{Ll}+$');
+preg_match('/^\p{Ll}+$/uD', '');
+
 $b = new Benchmark;
 $b->add(
     function ($string) {
         utf8_islower($string);
     },
-    "utf8_islower"
+    "utf8_islower",
+    array(
+        $string,
+    )
 )
 ->add(
-    function ($string) {
-        $ro = new Regexp('^\p{Ll}+$');
+    function ($ro, $string) {
         $ro->match($string);
     },
-    "Regexp::match"
+    "Regexp::match",
+    array(
+        $ro,
+        $string,
+    )
 )
 ->add(
     function ($string) {
         preg_match('/^\p{Ll}+$/uD', $string);
     },
-    "preg_match"
+    "preg_match",
+    array(
+        $string,
+    )
 )
-->registerArg($string)
 ->execute()
 ->report();
