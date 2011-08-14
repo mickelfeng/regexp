@@ -41,48 +41,6 @@
         CHECK_STATUS(status, "String conversion of " #from " to UTF-8 failed"); \
     } while (0);
 
-#define UTF16_CP_TO_CU(ustring, ustring_len, cp_offset, cu_offset)                                            \
-    do {                                                                                                      \
-        if (0 != cp_offset) {                                                                                 \
-            int32_t count_cp = u_countChar32((const uint8_t *) ustring, ustring_len);                         \
-            if (cp_offset < 0) {                                                                              \
-                if (cp_offset < -count_cp) {                                                                  \
-                    intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
-                    goto end;                                                                                 \
-                }                                                                                             \
-                cu_offset = ustring_len;                                                                      \
-                U16_BACK_N(ustring, 0, cu_offset, -cp_offset);                                                \
-            } else {                                                                                          \
-                if (cp_offset >= count_cp) {                                                                  \
-                    intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
-                    goto end;                                                                                 \
-                }                                                                                             \
-                U16_FWD_N(ustring, cu_offset, ustring_len, cp_offset);                                        \
-            }                                                                                                 \
-        }                                                                                                     \
-    } while (0);
-
-#define UTF8_CP_TO_CU(string, string_len, cp_offset, cu_offset)                                               \
-    do {                                                                                                      \
-        if (0 != cp_offset) {                                                                                 \
-            int32_t count_cp = utf8_countChar32((const uint8_t *) string, string_len);                        \
-            if (cp_offset < 0) {                                                                              \
-                if (cp_offset < -count_cp) {                                                                  \
-                    intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
-                    goto end;                                                                                 \
-                }                                                                                             \
-                cu_offset = string_len;                                                                       \
-                U8_BACK_N((const uint8_t *) string, 0, cu_offset, -cp_offset);                                \
-            } else {                                                                                          \
-                if (cp_offset >= count_cp) {                                                                  \
-                    intl_error_set(NULL, U_INDEX_OUTOFBOUNDS_ERROR, "code point out of bounds", 0 TSRMLS_CC); \
-                    goto end;                                                                                 \
-                }                                                                                             \
-                U8_FWD_N((const uint8_t *) string, cu_offset, string_len, cp_offset);                         \
-            }                                                                                                 \
-        }                                                                                                     \
-    } while (0);
-
 PHP_FUNCTION(utf8_split)
 {
     char *string = NULL;
@@ -1343,7 +1301,7 @@ PHP_FUNCTION(utf8_unescape) // TODO: tests
         return;
     }
     intl_error_reset(NULL TSRMLS_CC);
-    ret = utf8_unescape((const uint8_t *) string, string_len, &result, &result_len, &status);
+    ret = utf8_unescape((const uint8_t *) string, string_len, (uint8_t **) &result, &result_len, &status);
     if (quiet) {
         intl_error_set_code(NULL, status TSRMLS_CC);
     } else {

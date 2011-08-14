@@ -35,7 +35,7 @@ static const inline char *ubasename(const char *filename)
 # define mem_new_n(type, n)      emalloc((sizeof(type) * (n)))
 # define mem_renew(ptr, type, n) erealloc((ptr), (sizeof(type) * (n)))
 
-#define DEFAULT_NORMALIZATION UNORM_NFKC
+# define DEFAULT_NORMALIZATION UNORM_NFKC
 
 typedef enum {
     UCASE_NONE,

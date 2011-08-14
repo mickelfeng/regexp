@@ -608,7 +608,7 @@ UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target,
     UBool trail_expected = FALSE;
     int base, mindigits, maxdigits;
 
-    /*if (NULL == **target || *target_len < 0) {
+    /*if (NULL == target || *target_len < 0) {
         *status = U_ILLEGAL_ARGUMENT_ERROR;
         return FALSE;
     }*/
@@ -730,7 +730,7 @@ UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target,
         return FALSE;
     }
 
-    /*if (NULL == **target) {
+    /*if (NULL == target) {
         *status = U_BUFFER_OVERFLOW_ERROR;
         return FALSE;
     }*/
