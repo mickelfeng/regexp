@@ -1189,6 +1189,9 @@ end:
 
 #include "SAPI.h"
 
+#define MAY_BE_TRIMMED(c) \
+    (u_isspace(c) || U_CONTROL_CHAR == u_charType(c) || U_NON_SPACING_MARK == u_charType(c))
+
 PHP_FUNCTION(utf8_wordwrap) // TODO: tests
 {
     char *string = NULL;
@@ -1235,39 +1238,57 @@ PHP_FUNCTION(utf8_wordwrap) // TODO: tests
     UTF8_TO_UTF16(status, ustring, ustring_len, string, string_len);
     ustring_cp_len = u_countChar32(ustring, ustring_len);
     result = estrndup(string, result_len = string_len);
-    brk = ubrk_open(UBRK_WORD, locale, ustring, ustring_len, &status);
+    brk = ubrk_open(UBRK_LINE, locale, ustring, ustring_len, &status);
     if (!intl_error_non_quiet_set_code(status TSRMLS_CC)) {
         goto end;
     }
-    if (UBRK_DONE != (i = ubrk_first(brk))) {
-        do {
-            if (UBRK_WORD_NONE == ubrk_getRuleStatus(brk)) {
-                l = i;
-            } else {
-                int32_t cp_length_between_end_words = u_countChar32(ustring + i, i - u);
-                int32_t cp_word_length = u_countChar32(ustring + l, i - l);
+    {
+        UChar32 c;
+        int32_t utf16_cu_offset_l, utf16_cu_offset_u, utf16_cu_offset_b; // lower, upper, break offsets
+        int32_t utf16_cu_offset_p; // previous (after while, this is the last non trimmable code point)
+        int32_t utf16_cu_offset_ru; // upper reajusted (to trim)
 
-                if (cut && cp_word_length >= width) {
-                    int32_t utf16_break_cu_offset = l;
-                    int j;
-
-                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len, REPLACE_FORWARD);
-                    for (j = 0; j < (int) (cp_word_length / width); j++) {
-                        U16_FWD_N(ustring, utf16_break_cu_offset, i, width);
-                        utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, utf16_break_cu_offset, 0, ustring_cp_len, REPLACE_FORWARD);
+        for (utf16_cu_offset_l = 0; utf16_cu_offset_l < ustring_len; /* none */) {
+            utf16_cu_offset_u = utf16_cu_offset_l;
+            U16_FWD_N(ustring, utf16_cu_offset_u, ustring_len, width);
+            /*for (i = 0; utf16_cu_offset_u < ustring_len && i < width; ) {
+                U16_NEXT(ustring, utf16_cu_offset_u, ustring_len, c);
+                i += !MAY_BE_TRIMMED(c);
+            }*/
+            utf16_cu_offset_b = ubrk_preceding(brk, utf16_cu_offset_u + 1);
+            if (utf16_cu_offset_b <= utf16_cu_offset_l) {
+                if (cut) {
+                    int32_t utf16_cu_offset_p;
+                    utf16_cu_offset_p = utf16_cu_offset_ru = utf16_cu_offset_u;
+                    while (utf16_cu_offset_ru < ustring_len) {
+                        utf16_cu_offset_p = utf16_cu_offset_ru;
+                        U16_NEXT(ustring, utf16_cu_offset_ru, ustring_len, c);
+                        if (!MAY_BE_TRIMMED(c)) {
+                            break;
+                        }
                     }
-                    current_line_cp_length = cp_word_length % width;
-                    current_line_cu_offset = utf16_break_cu_offset + width;
-                } else if (current_line_cp_length + cp_length_between_end_words >= width) {
-                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, l, 0, ustring_cp_len, REPLACE_FORWARD);
-                    current_line_cp_length = cp_word_length;
-                    current_line_cu_offset = l;
-                } else {
-                    current_line_cp_length += cp_length_between_end_words;
+                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, utf16_cu_offset_u, utf16_cu_offset_p - utf16_cu_offset_u, ustring_cp_len, REPLACE_FORWARD);
                 }
-                u = i;
+                utf16_cu_offset_l = utf16_cu_offset_u;
+            } else if (utf16_cu_offset_b >= ustring_len) {
+                break;
+            } else {
+                utf16_cu_offset_u = utf16_cu_offset_b;
+                while (utf16_cu_offset_u >= utf16_cu_offset_l) {
+                    utf16_cu_offset_p = utf16_cu_offset_u;
+                    U16_PREV(ustring, 0, utf16_cu_offset_u, c);
+                    if (!MAY_BE_TRIMMED(c)) {
+                        break;
+                    }
+                }
+                if (utf16_cu_offset_p < utf16_cu_offset_b) {
+                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, utf16_cu_offset_p, utf16_cu_offset_b - utf16_cu_offset_p, ustring_cp_len, REPLACE_FORWARD);
+                } else {
+                    utf8_replace_len_from_utf16(&result, &result_len, replace, replace_len, ustring, utf16_cu_offset_b, 0, ustring_cp_len, REPLACE_FORWARD);
+                }
+                utf16_cu_offset_l = utf16_cu_offset_b;
             }
-        } while (UBRK_DONE != (i = ubrk_next(brk)));
+        }
     }
     result[result_len] = '\0';
     RETVAL_STRINGL(result, result_len, FALSE);
