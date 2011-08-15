@@ -66,9 +66,9 @@ PHP_FUNCTION(utf8_split)
 PHP_FUNCTION(utf8_count_chars) // TODO: tests
 {
     enum {
-        ARRAY_ALL_FREQ      = 0,
+        ARRAY_ALL_FREQ      = 0, // ask too much memory
         ARRAY_NONNULL_FREQ  = 1,
-        ARRAY_NULL_FREQ     = 2,
+        ARRAY_NULL_FREQ     = 2, // ask too much memory
         STRING_NONNULL_FREQ = 3,
         STRING_NULL_FREQ    = 4,
         _LAST_MODE
@@ -242,9 +242,6 @@ end:
     }
 }
 
-/**
- * TODO: make a bench between UTF-8 => UTF-16 conversion and using a (static) UText
- **/
 PHP_FUNCTION(utf8_count_words) // TODO: tests
 {
     enum {
