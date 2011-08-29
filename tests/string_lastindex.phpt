@@ -2,6 +2,7 @@
 Test utf8_lastindex function
 --SKIPIF--
 <?php if (!extension_loaded('intl')) echo 'skip'; ?>
+<?php if (!function_exists('utf8_lastpos')) echo 'skip'; ?>
 --FILE--
 <?php
 $A="\xF0\x9D\x98\xBC"; # 1D63C, Lu
