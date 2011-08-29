@@ -528,7 +528,6 @@ void utf8_replace_len_from_utf16(
     int32_t utf16_cp_length,
     ReplacementDirection direction
 ) {
-    int i;
     int32_t diff_len;
     int32_t utf8_match_cu_length = 0;
     int32_t utf8_cu_start_match_offset = 0;
@@ -539,7 +538,7 @@ void utf8_replace_len_from_utf16(
     } else {
         int32_t utf16_cu_end_match_offset = utf16_cu_start_match_offset + utf16_cu_length;
 
-        for (i = utf16_cu_start_match_offset; i < utf16_cu_end_match_offset; i++) {
+        while (utf16_cu_start_match_offset < utf16_cu_end_match_offset) {
             UChar32 c;
 
             U16_NEXT(ustring, utf16_cu_start_match_offset, utf16_cu_end_match_offset, c);
