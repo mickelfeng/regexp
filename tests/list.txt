@@ -2,6 +2,7 @@ ext/intl/regexp/tests/regexp_basic.phpt
 ext/intl/regexp/tests/regexp_get_flags.phpt
 ext/intl/regexp/tests/regexp_match_basic.phpt
 ext/intl/regexp/tests/regexp_match.phpt
+ext/intl/regexp/tests/regexp_replace_callback.phpt
 ext/intl/regexp/tests/regexp_split.phpt
 ext/intl/regexp/tests/string_casecmp.phpt
 ext/intl/regexp/tests/string_chr.phpt
