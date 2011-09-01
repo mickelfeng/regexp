@@ -396,11 +396,13 @@ static void cmp(INTERNAL_FUNCTION_PARAMETERS, int ignore_case, int limited_lengt
     char *string2 = NULL;
     int string2_len = 0;
     int length = -1;
+    int locale_len = 0;
+    char *locale = NULL;
     UErrorCode status = U_ZERO_ERROR;
 
     intl_error_reset(NULL TSRMLS_CC);
     if (limited_length) {
-        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl", &string1, &string1_len, &string2, &string2_len, &length)) {
+        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl|s", &string1, &string1_len, &string2, &string2_len, &length, &locale, &locale_len)) {
             return;
         }
         if (length < 0) {
@@ -408,15 +410,19 @@ static void cmp(INTERNAL_FUNCTION_PARAMETERS, int ignore_case, int limited_lengt
             RETURN_FALSE;
         }
     } else {
-        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &string1, &string1_len, &string2, &string2_len)) {
+        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|s", &string1, &string1_len, &string2, &string2_len, &locale, &locale_len)) {
             return;
         }
     }
+    if (0 == locale_len) {
+        locale = INTL_G(default_locale);
+    }
     ret = utf8_region_matches(
+        NULL,
         string1, string1_len, 0,
         string2, string2_len, 0,
         length,
-        "" /* locale */, UNORM_NFD /* unused */, ignore_case ? UCASE_FOLD : UCASE_NONE /* unused */,
+        locale, ignore_case,
         &status
     );
     intl_error_set_code(NULL, status TSRMLS_CC);
@@ -467,10 +473,11 @@ PHP_FUNCTION(utf8_slice_cmp)
         cp_length = MIN(string_cp_count, substring_cp_count);
     }
     ret = utf8_region_matches(
+        NULL,
         string, string_len, string_cp_offset,
         substring, substring_len, substring_cp_offset,
         cp_length,
-        "" /* locale */, UNORM_NFD /* unused */, ignore_case ? UCASE_FOLD : UCASE_NONE /* unused */,
+        "" /* locale */, ignore_case,
         &status
     );
     intl_error_set_code(NULL, status TSRMLS_CC);
@@ -503,10 +510,11 @@ PHP_FUNCTION(utf8_startswith) // TODO: tests
         RETURN_FALSE;
     }
     ret = utf8_region_matches(
+        NULL,
         string, string_len, 0,
         substring, substring_len, 0,
         substring_cp_count,
-        "" /* locale */, UNORM_NFD /* unused */, ignore_case ? UCASE_FOLD : UCASE_NONE /* unused */,
+        "" /* locale */, ignore_case,
         &status
     );
     intl_error_set_code(NULL, status TSRMLS_CC);
@@ -539,10 +547,11 @@ PHP_FUNCTION(utf8_endswith) // TODO: tests
         RETURN_FALSE;
     }
     ret = utf8_region_matches(
+        NULL,
         string, string_len, -substring_cp_count,
         substring, substring_len, 0,
         substring_cp_count,
-        "" /* locale */, UNORM_NFD /* unused */, ignore_case ? UCASE_FOLD : UCASE_NONE /* unused */,
+        "" /* locale */, ignore_case,
         &status
     );
     intl_error_set_code(NULL, status TSRMLS_CC);
@@ -577,38 +586,7 @@ PHP_FUNCTION(utf8_reverse)
     RETVAL_STRINGL(result, string_len, FALSE);
 }
 
-#if 1
-static inline char *memrnstr(char *haystack, char *needle, int needle_len, char *end)
-{
-    char *p;
-    char ne = needle[needle_len - 1];
-
-    if (1 == needle_len) {
-        return (char *) memrchr(haystack, *needle, end - haystack);
-    }
-
-    if (needle_len > end - haystack) {
-        return NULL;
-    }
-
-    p = end - needle_len;
-    while (p >= haystack) {
-        if ((p = (char *) memrchr(haystack, *needle, p - haystack + 1)) && ne == p[needle_len - 1]) {
-            if (!memcmp(needle, p, needle_len - 1)) {
-                return p;
-            }
-        }
-
-        if (NULL == p) {
-            return NULL;
-        }
-
-        p--;
-    }
-
-    return NULL;
-}
-
+#if 0
 static void find_case_sensitive(INTERNAL_FUNCTION_PARAMETERS, int last, int want_only_pos)
 {
     char *haystack = NULL;
@@ -681,28 +659,8 @@ end:
         RETVAL_FALSE;
     }
 }
+#endif
 
-// TODO: rename firstpos/lastpos to firstIndex/lastIndex ?
-PHP_FUNCTION(utf8_firstsub) // TODO: tests
-{
-    find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, FALSE);
-}
-
-PHP_FUNCTION(utf8_firstpos) // TODO: tests
-{
-    find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, TRUE);
-}
-
-PHP_FUNCTION(utf8_lastsub) // TODO: tests
-{
-    find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, FALSE);
-}
-
-PHP_FUNCTION(utf8_lastpos)
-{
-    find_case_sensitive(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, TRUE);
-}
-#else
 static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int want_only_pos*/)
 {
     char *found;
@@ -739,11 +697,13 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int wan
         needle = cus;
         needle_len = cus_length;
     }
+    status = U_ZERO_ERROR;
     found = utf8_find(
+        NULL,
         haystack, haystack_len,
         needle, needle_len,
-        start_cp_offset, locale, search_first,
-        UNORM_NFD /* unused */, ignore_case ? UCASE_FOLD : UCASE_NONE /* unused */,
+        start_cp_offset, NULL /* locale */, search_first,
+        ignore_case,
         &status
     );
     intl_error_set_code(NULL, status TSRMLS_CC);
@@ -754,7 +714,11 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int wan
     if (NULL == found) {
         RETURN_LONG((long) -1);
     } else {
-        RETURN_LONG((long) utf8_countChar32(haystack, found - haystack));
+        if (found == haystack) {
+            RETURN_LONG((long) 0);
+        } else {
+            RETURN_LONG((long) utf8_countChar32(haystack, found - haystack));
+        }
     }
 }
 
@@ -777,7 +741,6 @@ PHP_FUNCTION(utf8_rfind)
 {
     //
 }
-#endif
 
 PHP_FUNCTION(utf8_tr)
 {

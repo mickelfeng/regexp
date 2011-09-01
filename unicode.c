@@ -42,6 +42,28 @@ int unicode_convert_needle_to_cp(zval *needle, UChar32 *cp TSRMLS_DC)
     }
 }
 
+uint32_t get_option_from_locale(const char *locale)
+{
+    uint32_t options = 0;
+
+    if (NULL == locale) {
+        locale = INTL_G(default_locale); // caller responsability ?
+    }
+    if (NULL != locale) {
+        if (strlen(locale) >= 2) {
+            if (
+                'a' == tolower(locale[0]) && 'z' == tolower(locale[1]) && ('_' == locale[2] ||  '\0' == locale[2])
+                ||
+                't' == tolower(locale[0]) && 'r' == tolower(locale[1]) && ('_' == locale[2] ||  '\0' == locale[2])
+            ) {
+                options = U_FOLD_CASE_EXCLUDE_SPECIAL_I;
+            }
+        }
+    }
+
+    return options;
+}
+
 typedef int32_t (*u16_func_full_case_mapping_t)(UChar *, int32_t, const UChar *, int32_t, const char *, UErrorCode *);
 typedef int32_t (*u8_func_full_case_mapping_t)(UCaseMap *, char *, int32_t, const char *, int32_t, UErrorCode *);
 
@@ -93,7 +115,7 @@ void utf8_fullcase(
         *target_len = 0;
         return;
     }
-    cm = ucasemap_open(locale, U_FOLD_CASE_DEFAULT, status);
+    cm = ucasemap_open(locale, get_option_from_locale(locale), status);
     if (U_FAILURE(*status)) {
         return;
     }
@@ -137,6 +159,7 @@ void utf16_fullcase(
         *target_len = src_len;
         return;
     }
+#if 0
     do { /* Iteration needed: string may be longer than original ! */
         *status = U_ZERO_ERROR;
         target_size = ++tries * src_len + 1;
@@ -146,6 +169,15 @@ void utf16_fullcase(
             break;
         }
     } while (U_BUFFER_OVERFLOW_ERROR == *status);
+#else
+    *target_len = unicode_case_mapping[ct].u16_func(NULL, 0, src, src_len, locale, status);
+    if (U_BUFFER_OVERFLOW_ERROR != *status) {
+        return;
+    }
+    *status = U_ZERO_ERROR;
+    *target = mem_new_n(**target, *target_len + 1);
+    /* *target_len = */unicode_case_mapping[ct].u16_func(*target, *target_len + 1, src, src_len, locale, status);
+#endif
     if (U_FAILURE(*status)) {
         efree(*target);
         *target = NULL;

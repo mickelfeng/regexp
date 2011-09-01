@@ -7,25 +7,29 @@ Test utf8_casecmp function
 ini_set('intl.error_level', E_WARNING);
 
 var_dump(utf8_casecmp('içmek'));
-var_dump(utf8_casecmp('içmek', 'İÇMEK', 3));
+var_dump(utf8_casecmp('içmek', 'İÇMEK', 'tr', 3));
 
-var_dump(utf8_casecmp('iki', 'İKİ'));     // locale not considered (for now ?): not equal
-var_dump(utf8_casecmp('sıcak', 'SICAK')); // locale not considered (for now ?): not equal
+var_dump(utf8_casecmp('iki', 'İKİ'));     // default case folding (not equal)
+var_dump(utf8_casecmp('sıcak', 'SICAK')); // default case folding (not equal)
+
+var_dump(utf8_casecmp('iki', 'İKİ', 'tr'));     // locale case folding (equal)
+var_dump(utf8_casecmp('sıcak', 'SICAK', 'tr')); // locale case folding (equal)
 
 var_dump(utf8_casecmp('élève', 'ÉLÈVE')); // equal
 var_dump(utf8_casecmp('ÉLÈVE', 'Élève')); // equal
 
-var_dump(utf8_casecmp("a\xCC\x80bc", "\xC3\x80bc")); // decomposition test, equal
+//var_dump(utf8_casecmp("a\xCC\x80bc", "\xC3\x80bc")); // decomposition test, equal
 ?>
 --EXPECTF--
 
-Warning: utf8_casecmp() expects exactly 2 parameters, 1 given in %s on line %d
+Warning: utf8_casecmp() expects at least 2 parameters, 1 given in %s on line %d
 NULL
 
-Warning: utf8_casecmp() expects exactly 2 parameters, 3 given in %s on line %d
+Warning: utf8_casecmp() expects at most 3 parameters, 4 given in %s on line %d
 NULL
-int(-%d)
-int(%d)
+int(%i)
+int(%i)
+int(0)
 int(0)
 int(0)
 int(0)

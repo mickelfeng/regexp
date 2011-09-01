@@ -26,10 +26,10 @@ PHP_FUNCTION(utf8_toupper);
 PHP_FUNCTION(utf8_tolower);
 PHP_FUNCTION(utf8_totitle);
 
-PHP_FUNCTION(utf8_firstsub);
-PHP_FUNCTION(utf8_firstpos);
-PHP_FUNCTION(utf8_lastsub);
-PHP_FUNCTION(utf8_lastpos);
+PHP_FUNCTION(utf8_rindex);
+PHP_FUNCTION(utf8_lindex);
+PHP_FUNCTION(utf8_lfind);
+PHP_FUNCTION(utf8_rfind);
 
 PHP_FUNCTION(utf8_tr);
 

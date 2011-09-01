@@ -19,10 +19,10 @@ PHP_FE(utf8_ncasecmp, arginfo_ncmp)
 PHP_FE(utf8_endswith, arginfo_starts_ends_with)
 PHP_FE(utf8_startswith, arginfo_starts_ends_with)
 
-PHP_FE(utf8_firstsub, arginfo_findsub)
-PHP_FE(utf8_firstpos, arginfo_findpos)
-PHP_FE(utf8_lastsub, arginfo_findsub)
-PHP_FE(utf8_lastpos, arginfo_findpos)
+PHP_FE(utf8_rindex, arginfo_index)
+PHP_FE(utf8_lindex, arginfo_index)
+PHP_FE(utf8_lfind, arginfo_find)
+PHP_FE(utf8_rfind, arginfo_find)
 
 PHP_FE(utf8_tr, arginfo_tr)
 

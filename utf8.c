@@ -182,45 +182,40 @@ int utf8_cp_to_cu(const char *string, int string_len, int32_t cp_offset, int32_t
     return TRUE;
 }
 
-void utf8_foldcase(char **target, int32_t *target_len, const char *src, int src_len, UErrorCode *status)
+void utf8_foldcase(char **target, int32_t *target_len, const char *src, int src_len, const char *locale, UErrorCode *status)
 {
-    utf8_fullcase(target, target_len, src, src_len, "" /* locale not used */, UCASE_FOLD, status);
+    utf8_fullcase(target, target_len, src, src_len, locale, UCASE_FOLD, status);
 }
 
-static inline char *utf8_binary_memrnstr(char *haystack, char *needle, int needle_len, char *end)
+static inline char *zend_binary_memrnstr(char *haystack, char *needle, int needle_len, char *end)
 {
+    char ne;
     char *p;
-    char ne = needle[needle_len - 1];
+    int haystack_len;
 
+    ne = needle[needle_len - 1];
+    haystack_len = end - haystack;
     if (1 == needle_len) {
-        return (char *) memrchr(haystack, *needle, end - haystack);
+        return (char *) memrchr(haystack, *needle, haystack_len);
     }
 
-    if (needle_len > end - haystack) {
+    if (needle_len > haystack_len) {
         return NULL;
     }
 
     p = end - needle_len;
     while (p >= haystack) {
-        if ((p = (char *) memrchr(haystack, *needle, p - haystack + 1)) && ne == p[needle_len - 1]) {
-            if (!memcmp(needle, p, needle_len - 1)) {
-                return p;
-            }
-        }
-
-        if (NULL == p) {
+        if (NULL == (p = (char *) memrchr(haystack, *needle, p - haystack))) {
             return NULL;
         }
-
+        if (ne == p[needle_len - 1] && !memcmp(needle, p, needle_len - 1)) {
+            return p;
+        }
         p--;
     }
 
     return NULL;
 }
-
-/**
- * TODO: Tests with composed/decomposed strings
- **/
 
 /**
  * Helper for strr?i?pos and strr?i?chr
@@ -232,137 +227,41 @@ static inline char *utf8_binary_memrnstr(char *haystack, char *needle, int needl
  * - handle needle conversion to code point if it is not a string
  * - handle/set ICU error
  **/
-char *utf8_find( /* /!\ may be changed in the future /!\ */
+char *utf8_find(
+    UCollator *ucol,
     char *haystack, int32_t haystack_len, /* length in CU */
     char *needle, int32_t needle_len,     /* length in CU */
     int32_t start_cp_offset,              /* offset in CP ; may be negative to search from end */
-    const char *locale,
+    const char *locale, /* unused with ucol */
     UBool search_first,
-    UNormalizationMode nm, UCaseType ct, /* /!\ may be removed for a default/specific value (ICU ones) /!\ */
+    UBool case_insensitive, /* unused with ucol */
     UErrorCode *status
 ) {
+    char *found = NULL;
     int32_t start_cu_offset = 0;
 
     *status = U_ZERO_ERROR;
     if (!utf8_cp_to_cu(haystack, haystack_len, start_cp_offset, &start_cu_offset, status)) {
         return NULL;
     }
-    if (UNORM_NONE == nm) { // it is possible to directly work in UTF-8
-        char *found;
-        char *cased_haystack, *cased_needle;
-        int32_t cased_haystack_len, cased_needle_len;
-
-        found = cased_haystack = cased_needle = NULL;
-        // TODO: ne convertir que la partie où la recherche a lieu
-        utf8_fullcase(&cased_haystack, &cased_haystack_len, haystack, haystack_len, locale, ct, status);
-        if (U_FAILURE(*status)) {
-            if (UCASE_NONE != ct) {
-                if (NULL != cased_haystack) {
-                    efree(cased_haystack);
-                }
-            }
-            return NULL;
-        }
-        // TODO: ne convertir que la partie où la recherche a lieu
-        utf8_fullcase(&cased_needle, &cased_needle_len, needle, needle_len, locale, ct, status);
-        if (U_FAILURE(*status)) {
-            if (UCASE_NONE != ct) {
-                if (NULL != cased_haystack) {
-                    efree(cased_haystack);
-                }
-                if (NULL != cased_needle) {
-                    efree(cased_needle);
-                }
-            }
-            return NULL;
-        }
-        if (search_first) {
-            found = php_memnstr(haystack + start_cu_offset, needle, needle_len, haystack + haystack_len);
+    if (NULL == ucol) {
+        if (case_insensitive) {
+            // TODO
         } else {
-            if (start_cp_offset >= 0) {
-                found = utf8_binary_memrnstr(haystack + start_cu_offset, needle, needle_len, haystack + haystack_len);
+            if (search_first) {
             } else {
-                found = utf8_binary_memrnstr(haystack, needle, needle_len, haystack + start_cu_offset);
+                if (start_cp_offset >= 0) {
+                    found = zend_binary_memrnstr(haystack + start_cu_offset, needle, needle_len, haystack + haystack_len);
+                } else {
+                    found = zend_binary_memrnstr(haystack, needle,needle_len, haystack + start_cu_offset);
+                }
             }
         }
-
-        return found;
-    } else { // impossible here, we need to work in UTF-16
-        UChar *uhaystack = NULL;
-        int32_t uhaystack_len = 0;
-        UChar *uneedle = NULL;
-        int32_t uneedle_len = 0;
-        UChar *unormalized_haystack = NULL;
-        int32_t unormalized_haystack_len = 0;
-        UChar *unormalized_needle = NULL;
-        int32_t unormalized_needle_len = 0;
-        UChar *ucased_haystack = NULL;
-        int32_t ucased_haystack_len = 0;
-        UChar *ucased_needle = NULL;
-        int32_t ucased_needle_len = 0;
-
-        // TODO: ne convertir que la partie où la recherche a lieu
-        intl_convert_utf8_to_utf16(&uhaystack, &uhaystack_len, haystack, haystack_len, status);
-        if (U_FAILURE(*status)) {
-            goto end;
-        }
-        // TODO: ne convertir que la partie où la recherche a lieu
-        intl_convert_utf8_to_utf16(&uneedle, &uneedle_len, needle, needle_len, status);
-        if (U_FAILURE(*status)) {
-            goto end;
-        }
-        utf16_normalize(&unormalized_haystack, &unormalized_haystack_len, uhaystack, uhaystack_len, nm, status);
-        if (U_FAILURE(*status)) {
-            goto end;
-        }
-        efree(uhaystack); uhaystack = NULL; // we don't need it anymore
-        utf16_normalize(&unormalized_needle, &unormalized_needle_len, uneedle, uneedle_len, nm, status);
-        if (U_FAILURE(*status)) {
-            goto end;
-        }
-        efree(uneedle); uneedle = NULL; // we don't need it anymore
-
-        if (UCASE_NONE == ct) {
-            ucased_haystack = unormalized_haystack;
-            ucased_haystack_len = unormalized_haystack_len;
-            ucased_needle = unormalized_needle;
-            ucased_needle_len = unormalized_needle_len;
-        } else {
-            utf16_fullcase(&ucased_haystack, &ucased_haystack_len, unormalized_haystack, unormalized_haystack_len, locale, ct, status);
-            if (U_FAILURE(*status)) {
-                goto end;
-            }
-            efree(unormalized_haystack); unormalized_haystack = NULL; // we don't need it anymore
-            utf16_fullcase(&ucased_needle, &ucased_needle_len, unormalized_needle, unormalized_needle_len, locale, ct, status);
-            if (U_FAILURE(*status)) {
-                goto end;
-            }
-            efree(unormalized_needle); unormalized_needle = NULL; // we don't need it anymore
-        }
-        // "recalculer" le pointeur UTF-16 => UTF-8
-
-end:
-        if (NULL != uhaystack) {
-            efree(uhaystack);
-        }
-        if (NULL != uneedle) {
-            efree(uneedle);
-        }
-        if (NULL != unormalized_haystack) {
-            efree(unormalized_haystack);
-        }
-        if (NULL != unormalized_needle) {
-            efree(unormalized_needle);
-        }
-        if (NULL != ucased_haystack && UCASE_NONE != ct) {
-            efree(ucased_haystack);
-        }
-        if (NULL != ucased_needle && UCASE_NONE != ct) {
-            efree(ucased_needle);
-        }
+    } else {
+        // TODO: ustringsearch ?
     }
 
-    return NULL;
+    return found;
 }
 
 /**
@@ -378,12 +277,12 @@ end:
  * - check for status/error before considering return value
  * - check match_length >= 0
  **/
-int utf8_region_matches( /* /!\ may be changed in the future /!\ */
+int utf8_region_matches(
+    UCollator *ucol,
     const char *string1, int32_t string1_len, int32_t string1_offset, /* length in CU ; offset in CP */
     const char *string2, int32_t string2_len, int32_t string2_offset, /* length in CU ; offset in CP */
-    int32_t match_length,                                             /* length in CP, < 0 for all string (str(?:case)?cmp behavior) */
-    const char *locale,
-    UNormalizationMode nm, UCaseType ct, /* /!\ may be removed for a default/specific value (ICU ones) /!\ */
+    int32_t match_length, /* length in CP, < 0 for all string (str(?:case)?cmp behavior) */
+    const char *locale, UBool case_insensitive, /* both unused with ucol */
     UErrorCode *status
 ) {
     int ret = 0;
@@ -411,84 +310,44 @@ int utf8_region_matches( /* /!\ may be changed in the future /!\ */
 // debug("string1_start_cu_offset = %d, string1_end_cu_offset = %d", string1_start_cu_offset, string1_end_cu_offset);
 // debug("string2_start_cu_offset = %d, string2_end_cu_offset = %d", string2_start_cu_offset, string2_end_cu_offset);
     }
-    if (UNORM_NONE == nm) {
-        char *cased_string1 = NULL;
-        int32_t cased_string1_len = 0;
-        char *cased_string2 = NULL;
-        int32_t cased_string2_len = 0;
-        int32_t substring1_len;
-        int32_t substring2_len;
+    if (NULL == ucol) {
+        if (case_insensitive) {
+            char *cased_string1 = NULL;
+            int cased_string1_len = 0;
+            char *cased_string2 = NULL;
+            int cased_string2_len = 0;
 
-        utf8_fullcase(&cased_string1, &cased_string1_len, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset, locale, ct, status);
-        if (U_FAILURE(*status)) {
-            if (UCASE_NONE != ct) {
+            utf8_foldcase(&cased_string1, &cased_string1_len, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset, locale, status);
+            if (U_FAILURE(*status)) {
                 if (NULL != cased_string1) {
                     efree(cased_string1);
                 }
+                return 0;
             }
-            return 0;
-        }
-        utf8_fullcase(&cased_string2, &cased_string2_len, string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset, locale, ct, status);
-        if (U_FAILURE(*status)) {
-            if (UCASE_NONE != ct) {
-                if (NULL != cased_string1) {
-                    efree(cased_string1);
-                }
+            utf8_foldcase(&cased_string2, &cased_string2_len, string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset, locale, status);
+            if (U_FAILURE(*status)) {
+                efree(cased_string1);
                 if (NULL != cased_string2) {
                     efree(cased_string2);
                 }
+                return 0;
             }
-            return 0;
-        }
-        substring1_len = utf8_countChar32((const uint8_t *) string1 + string1_start_cu_offset, string1_len - string1_start_cu_offset);
-        substring2_len = utf8_countChar32((const uint8_t *) string2 + string2_start_cu_offset, string2_len - string2_start_cu_offset);
-        // TODO: binary utf8 comparison
-        //ret = memcmp(string1, string2, LENGTH);
-        if (UCASE_NONE != ct) {
-            if (NULL != cased_string1) {
-                efree(cased_string1);
-            }
-            if (NULL != cased_string2) {
-                efree(cased_string2);
-            }
+            ret = zend_binary_strcmp(cased_string1, cased_string1_len, cased_string2, cased_string2_len);
+            efree(cased_string1);
+            efree(cased_string2);
+        } else {
+            ret = zend_binary_strcmp(
+                string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset,
+                string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset
+            );
         }
     } else {
-        // ct (Case Type) et nm (Normalization Mode) ignored
-        UChar *usubstring1 = NULL;
-        UChar *usubstring2 = NULL;
-        int32_t usubstring1_len = 0;
-        int32_t usubstring2_len = 0;
+        UCharIterator iter1, iter2;
 
-// debug("(sub)string1 = %*s (%d)\n", string1_end_cu_offset - string1_start_cu_offset, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset);
-// debug("(sub)string2 = %*s (%d)\n", string2_end_cu_offset - string2_start_cu_offset, string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset);
-        // TODO: make a binary comparison first to avoid potential uneeded conversions/normalizations ?
-        intl_convert_utf8_to_utf16(&usubstring1, &usubstring1_len, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset, status);
-        if (U_FAILURE(*status)) {
-            if (NULL != usubstring1) {
-                efree(usubstring1);
-            }
-            return 0;
-        }
-        intl_convert_utf8_to_utf16(&usubstring2, &usubstring2_len, string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset, status);
-        if (U_FAILURE(*status)) {
-            if (NULL != usubstring1) {
-                efree(usubstring1);
-            }
-            if (NULL != usubstring2) {
-                efree(usubstring2);
-            }
-            return 0;
-        }
-// debug("usubstring1 = %.*S (%d)", usubstring1_len, usubstring1, usubstring1_len);
-// debug("usubstring2 = %.*S (%d)", usubstring2_len, usubstring2, usubstring2_len);
-        ret = unorm_compare(usubstring1, usubstring1_len, usubstring2, usubstring2_len, UCASE_NONE == ct ? U_FOLD_CASE_DEFAULT : U_COMPARE_IGNORE_CASE, status);
-        // we don't need to check *status here: same case
-        if (NULL != usubstring1) {
-            efree(usubstring1);
-        }
-        if (NULL != usubstring2) {
-            efree(usubstring2);
-        }
+        uiter_setUTF8(&iter1, string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset);
+        uiter_setUTF8(&iter2, string2 + string1_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset);
+
+        ret = ucol_strcollIter(ucol, &iter1, &iter2, status);
     }
 
     return ret;

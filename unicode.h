@@ -46,6 +46,7 @@ typedef enum {
     UCASE_COUNT
 } UCaseType;
 
+uint32_t get_option_from_locale(const char *locale);
 int unicode_convert_needle_to_cp(zval *, UChar32 * TSRMLS_DC);
 void utf8_fullcase(char **, int32_t *, const char *, int, const char *, UCaseType, UErrorCode *);
 void utf16_fullcase(UChar **, int32_t *, const UChar *, int, const char *, UCaseType, UErrorCode *);
