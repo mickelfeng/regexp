@@ -1354,24 +1354,17 @@ PHP_FUNCTION(utf8_unescape) // TODO: tests
  * strcasecmp => utf8_casecmp
  * strncasecmp => utf8_ncasecmp
  * strncmp => utf8_ncmp
- * strpos => utf8_firstpos (TODO: rename ?)
- * strrpos => utf8_lastpos (TODO: rename ?)
- * strstr/strchr => utf8_firstsub (TODO: rename ?)
- * strrchr => utf8_lastsub (TODO: rename ?)
+ * strpos => utf8_lindex (TODO: tests)
+ * strrpos => utf8_rindex (TODO: tests)
+ * strstr/strchr => utf8_lfind (TODO: tests)
+ * strrchr => utf8_rfind (TODO: tests)
  * substr_count => utf8_slice_count
  * substr_replace => utf8_slice_replace
  * str_ireplace => utf8_ireplace (TODO: move to Collator)
  * wordwrap => utf8_wordwrap (TODO: tests)
  **/
 
-/**
- * "Ideas":
- * - Make comparisons highly customable for fast/full (normalization or not), cs/ci by optionnal flags (of constants)?
- * eg : utf8_lindex($string, $substring, UTF8_IGNORE_CASE | UTF8_FULL_CMP)
- * - Pass strings by reference for normalization?
- **/
-
-// stri[r?pos|r?chr] : rewrite (depends on locale support with case folding)
+// stri[r?pos|r?chr] : needs low-level case folding ?
 
 // explode : same
 // implode, join : same
@@ -1380,11 +1373,5 @@ PHP_FUNCTION(utf8_unescape) // TODO: tests
 // str_repeat : same
 
 // strnatcasecmp, strnatcmp : use collations?
-// strncasecmp, strcasecmp : rewrite (2 versions : with case folding and full/locale?)
 // ucfirst, lcfirst : no sense ?
 // ...
-
-/**
- * strn(case)?cmp: length doesn't really make sense ?
- * str(case)cmp : use collations for implementation ?
- **/
