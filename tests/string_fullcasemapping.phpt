@@ -7,6 +7,7 @@ Test utf8_to[title|upper|lower] function
 ini_set('intl.error_level', E_WARNING);
 
 $functions = array('totitle', 'toupper', 'tolower');
+
 define('INITIAL_VALUE', 'içmek');
 $locales = array(
     'fr' => array('totitle' => 'Içmek', 'toupper' => 'IÇMEK', 'tolower' => 'içmek'),
@@ -35,6 +36,8 @@ foreach ($locales as $l => $a) {
     }
 }
 
+ini_set('intl.default_locale', 'en_US');
+
 echo "##### Explicit locale #####\n";
 foreach ($locales as $l => $a) {
     $word = INITIAL_VALUE;
@@ -43,6 +46,12 @@ foreach ($locales as $l => $a) {
         echo $word === $a[$f] ? 'OK' : 'FAILED', ' (', $l, ' => ', $f, ')', "\n";
     }
 }
+
+echo "##### Full case mapping #####\n";
+echo utf8_toupper('straße') === 'STRASSE' ? 'OK' : 'FAILED', ' (U+00DF)', "\n";
+echo utf8_totitle('ﬁne') === 'Fine' ? 'OK' : 'FAILED', ' (U+FB01)', "\n";
+echo utf8_tolower('ABCΣDEF') === 'abcσdef' ? 'OK' : 'FAILED', ' (U+03A3/U+03C3)', "\n";
+echo utf8_tolower('GHIΣ') === 'ghiς' ? 'OK' : 'FAILED', ' (U+03A3/U+03C2)', "\n";
 ?>
 --EXPECTF--
 
@@ -81,3 +90,8 @@ OK (fr => tolower)
 OK (tr => totitle)
 OK (tr => toupper)
 OK (tr => tolower)
+##### Full case mapping #####
+OK (U+00DF)
+OK (U+FB01)
+OK (U+03A3/U+03C3)
+OK (U+03A3/U+03C2)
