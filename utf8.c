@@ -127,7 +127,7 @@ UBool utf8_validate(const uint8_t *string, int32_t string_len, UErrorCode *statu
     end = ((uint8_t *) string) + string_len;
     while (end > p) {
         cplen = utf8_count_bytes[*p];
-        if (cplen < 0 || cplen > U8_MAX_LENGTH) {
+        if (cplen < 0/* || cplen > U8_MAX_LENGTH*/) {
             *status = U_ILLEGAL_CHAR_FOUND;
             return FALSE;
         }
@@ -247,8 +247,14 @@ char *utf8_find(
     if (NULL == ucol) {
         if (case_insensitive) {
             // TODO
+            if (search_first) {
+                // first
+            } else {
+                // last
+            }
         } else {
             if (search_first) {
+                found = php_memnstr(haystack + start_cu_offset, needle, needle_len, haystack + haystack_len);
             } else {
                 if (start_cp_offset >= 0) {
                     found = zend_binary_memrnstr(haystack + start_cu_offset, needle, needle_len, haystack + haystack_len);

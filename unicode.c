@@ -42,13 +42,8 @@ int unicode_convert_needle_to_cp(zval *needle, UChar32 *cp TSRMLS_DC)
     }
 }
 
-uint32_t get_option_from_locale(const char *locale)
+UBool uloc_is_turkic(const char *locale)
 {
-    uint32_t options = 0;
-
-    if (NULL == locale) {
-        locale = INTL_G(default_locale); // caller responsability ?
-    }
     if (NULL != locale) {
         if (strlen(locale) >= 2) {
             if (
@@ -56,12 +51,12 @@ uint32_t get_option_from_locale(const char *locale)
                 ||
                 't' == tolower(locale[0]) && 'r' == tolower(locale[1]) && ('_' == locale[2] ||  '\0' == locale[2])
             ) {
-                options = U_FOLD_CASE_EXCLUDE_SPECIAL_I;
+                return TRUE;
             }
         }
     }
 
-    return options;
+    return FALSE;
 }
 
 typedef int32_t (*u16_func_full_case_mapping_t)(UChar *, int32_t, const UChar *, int32_t, const char *, UErrorCode *);
@@ -115,7 +110,7 @@ void utf8_fullcase(
         *target_len = 0;
         return;
     }
-    cm = ucasemap_open(locale, get_option_from_locale(locale), status);
+    cm = ucasemap_open(locale, uloc_is_turkic(locale) ? U_FOLD_CASE_EXCLUDE_SPECIAL_I : U_FOLD_CASE_DEFAULT, status);
     if (U_FAILURE(*status)) {
         return;
     }

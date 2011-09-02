@@ -28,7 +28,7 @@
     } while (0);
 
 typedef struct {
-    int32_t cus_length;
+    uint8_t cus_length;
     char cus[U8_MAX_LENGTH + 1];
 } U8ReplacementCharData;
 

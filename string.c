@@ -661,7 +661,10 @@ end:
 }
 #endif
 
-static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int want_only_pos*/)
+/**
+ * TODO: locale support (CI - only ?)
+ **/
+static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first, int want_only_pos)
 {
     char *found;
     char *haystack = NULL;
@@ -671,14 +674,20 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int wan
     int needle_len = 0;
     int start_cp_offset = 0;
     UErrorCode status;
+    zend_bool before = FALSE;
     zend_bool ignore_case = FALSE;
     char cus[U8_MAX_LENGTH + 1] = { 0 };
     int cus_length = 0;
 
     intl_error_reset(NULL TSRMLS_CC);
-    // if (want_only_pos)
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|lb", &haystack, &haystack_len, &zneedle, &start_cp_offset, &ignore_case)) {
-        return;
+    if (want_only_pos) {
+        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|lb", &haystack, &haystack_len, &zneedle, &start_cp_offset, &ignore_case)) {
+            return;
+        }
+    } else {
+        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|lbb", &haystack, &haystack_len, &zneedle, &start_cp_offset, &ignore_case, &before)) {
+            return;
+        }
     }
     if (IS_STRING == Z_TYPE_P(zneedle)) {
         if (!Z_STRLEN_P(zneedle)) {
@@ -710,36 +719,47 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first/*, int wan
     if (U_FAILURE(status)) {
         RETURN_FALSE;
     }
-    // if (want_only_pos)
-    if (NULL == found) {
-        RETURN_LONG((long) -1);
-    } else {
-        if (found == haystack) {
-            RETURN_LONG((long) 0);
+    if (want_only_pos) {
+        if (NULL == found) {
+            RETURN_LONG((long) -1);
         } else {
-            RETURN_LONG((long) utf8_countChar32(haystack, found - haystack));
+            if (found == haystack) {
+                RETURN_LONG((long) 0);
+            } else {
+                RETURN_LONG((long) utf8_countChar32(haystack, found - haystack));
+            }
+        }
+    } else {
+        if (NULL == found) {
+            RETURN_FALSE;
+        } else {
+            if (before) {
+                RETURN_STRINGL(haystack, found - haystack, TRUE);
+            } else {
+                RETURN_STRINGL(found, haystack_len - (found - haystack), TRUE);
+            }
         }
     }
 }
 
-PHP_FUNCTION(utf8_rindex)
+PHP_FUNCTION(utf8_rindex) // TODO: tests (CI, locale)
 {
-    utf8_index(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE);
+    utf8_index(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, TRUE);
 }
 
-PHP_FUNCTION(utf8_lindex)
+PHP_FUNCTION(utf8_lindex) // TODO: tests
 {
-    utf8_index(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE);
+    utf8_index(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, TRUE);
 }
 
-PHP_FUNCTION(utf8_lfind) // szlbb
+PHP_FUNCTION(utf8_lfind) // TODO: tests
 {
-    //
+    utf8_index(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, FALSE);
 }
 
-PHP_FUNCTION(utf8_rfind)
+PHP_FUNCTION(utf8_rfind) // TODO: tests
 {
-    //
+    utf8_index(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, FALSE);
 }
 
 PHP_FUNCTION(utf8_tr)
@@ -1309,11 +1329,6 @@ PHP_FUNCTION(utf8_unescape) // TODO: tests
  * - validate
  * - wordwrap
  * - unescape
- **/
-
-/**
- * locale support on case folding ?
- * Length have more sense with a NFC normalization ?
  **/
 
 /**
