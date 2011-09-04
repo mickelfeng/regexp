@@ -6,6 +6,8 @@ Test utf8_to[title|upper|lower] function
 <?php
 ini_set('intl.error_level', E_WARNING);
 
+define('OVERFLOW_ATTEMPT', 10000);
+
 $functions = array('totitle', 'toupper', 'tolower');
 
 define('INITIAL_VALUE', 'içmek');
@@ -52,6 +54,10 @@ echo utf8_toupper('straße') === 'STRASSE' ? 'OK' : 'FAILED', ' (U+00DF)', "\n";
 echo utf8_totitle('ﬁne') === 'Fine' ? 'OK' : 'FAILED', ' (U+FB01)', "\n";
 echo utf8_tolower('ABCΣDEF') === 'abcσdef' ? 'OK' : 'FAILED', ' (U+03A3/U+03C3)', "\n";
 echo utf8_tolower('GHIΣ') === 'ghiς' ? 'OK' : 'FAILED', ' (U+03A3/U+03C2)', "\n";
+
+echo "##### Overflow #####\n";
+echo utf8_toupper(str_repeat('ß', OVERFLOW_ATTEMPT)) === str_repeat('SS', OVERFLOW_ATTEMPT) ? 'OK' : 'FAILED', ' (*2)', "\n";
+echo utf8_toupper(str_repeat('ı', OVERFLOW_ATTEMPT), 'tr') === str_repeat('I', OVERFLOW_ATTEMPT) ? 'OK' : 'FAILED', ' (/2)', "\n";
 ?>
 --EXPECTF--
 
@@ -95,3 +101,6 @@ OK (U+00DF)
 OK (U+FB01)
 OK (U+03A3/U+03C3)
 OK (U+03A3/U+03C2)
+##### Overflow #####
+OK (*2)
+OK (/2)
