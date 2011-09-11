@@ -17,8 +17,6 @@ var_dump(utf8_casecmp('sıcak', 'SICAK', 'tr')); // locale case folding (equal)
 
 var_dump(utf8_casecmp('élève', 'ÉLÈVE')); // equal
 var_dump(utf8_casecmp('ÉLÈVE', 'Élève')); // equal
-
-//var_dump(utf8_casecmp("a\xCC\x80bc", "\xC3\x80bc")); // decomposition test, equal
 ?>
 --EXPECTF--
 
