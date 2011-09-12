@@ -877,17 +877,17 @@ static void trim(INTERNAL_FUNCTION_PARAMETERS, int mode)
     }
 }
 
-PHP_FUNCTION(utf8_rtrim) // TODO: tests
+PHP_FUNCTION(utf8_rtrim)
 {
     trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_RIGHT);
 }
 
-PHP_FUNCTION(utf8_ltrim) // TODO: tests
+PHP_FUNCTION(utf8_ltrim)
 {
     trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_LEFT);
 }
 
-PHP_FUNCTION(utf8_trim) // TODO: tests
+PHP_FUNCTION(utf8_trim)
 {
     trim(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRIM_BOTH);
 }
@@ -1339,9 +1339,9 @@ PHP_FUNCTION(utf8_unescape) // TODO: tests
  * strtolower => utf8_tolower
  * strtoupper => utf8_toupper
  * ucwords => utf8_totitle (not strictly, others chars are lowered)
- * trim => utf8_trim (TODO: tests)
- * ltrim => utf8_ltrim (TODO: tests)
- * rtrim => utf8_rtrim (TODO: tests)
+ * trim => utf8_trim
+ * ltrim => utf8_ltrim
+ * rtrim => utf8_rtrim
  * chr => utf8_chr
  * ord => utf8_ord
  * strtr => utf8_tr
