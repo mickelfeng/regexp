@@ -128,7 +128,7 @@ void utf8_fullcase(
         *target_len = 0;
     } else {
         *(*target + *target_len) = '\0';
-        assert(*status == U_ZERO_ERROR);
+        assert(U_ZERO_ERROR == *status);
     }
     ucasemap_close(cm);
 }
@@ -179,6 +179,6 @@ void utf16_fullcase(
         *target = NULL;
     } else {
         *(*target + *target_len) = 0;
-        assert(*status == U_ZERO_ERROR);
+        assert(U_ZERO_ERROR == *status);
     }
 }

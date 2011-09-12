@@ -63,6 +63,6 @@ void utf16_normalize(UChar **target, int32_t *target_len, const UChar *src, int3
         *target_len = 0;
     } else {
         *(*target + *target_len) = '\0';
-        assert(*status == U_ZERO_ERROR);
+        assert(U_ZERO_ERROR == *status);
     }
 }
