@@ -839,7 +839,7 @@ static void trim(INTERNAL_FUNCTION_PARAMETERS, int mode)
         for (i = k = 0 ; i < end ; /* NOP */) {
             U8_NEXT(string, k, end, c);
             if (NULL == what) {
-                if (FALSE == u_isWhitespace(c)) {
+                if (FALSE == u_isspace(c)) {
                     break;
                 }
             } else {
@@ -855,7 +855,7 @@ static void trim(INTERNAL_FUNCTION_PARAMETERS, int mode)
         for (i = k = end ; i > start ; /* NOP */) {
             U8_PREV(string, 0, k, c);
             if (NULL == what) {
-                if (FALSE == u_isWhitespace(c)) {
+                if (FALSE == u_isspace(c)) {
                     break;
                 }
             } else {
