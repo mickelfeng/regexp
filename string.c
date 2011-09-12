@@ -425,7 +425,7 @@ static void cmp(INTERNAL_FUNCTION_PARAMETERS, int ignore_case, int limited_lengt
         locale, ignore_case,
         &status
     );
-    intl_error_set_code(NULL, status TSRMLS_CC);
+    intl_error_non_quiet_set_code(status TSRMLS_CC);
     if (U_FAILURE(status)) {
         RETURN_FALSE;
     } else {
@@ -472,6 +472,7 @@ PHP_FUNCTION(utf8_slice_cmp)
         substring_cp_count = utf8_countChar32((const uint8_t *) substring, substring_len);
         cp_length = MIN(string_cp_count, substring_cp_count);
     }
+    // TODO: locale support
     ret = utf8_region_matches(
         NULL,
         string, string_len, string_cp_offset,
@@ -480,7 +481,7 @@ PHP_FUNCTION(utf8_slice_cmp)
         "" /* locale */, ignore_case,
         &status
     );
-    intl_error_set_code(NULL, status TSRMLS_CC);
+    intl_error_non_quiet_set_code(status TSRMLS_CC);
     if (U_FAILURE(status)) {
         RETURN_FALSE;
     } else {
@@ -509,6 +510,7 @@ PHP_FUNCTION(utf8_startswith) // TODO: tests
     if (substring_cp_count > string_cp_count) {
         RETURN_FALSE;
     }
+    // TODO: locale support
     ret = utf8_region_matches(
         NULL,
         string, string_len, 0,
@@ -517,7 +519,7 @@ PHP_FUNCTION(utf8_startswith) // TODO: tests
         "" /* locale */, ignore_case,
         &status
     );
-    intl_error_set_code(NULL, status TSRMLS_CC);
+    intl_error_non_quiet_set_code(status TSRMLS_CC);
     if (U_FAILURE(status)) {
         RETURN_FALSE;
     } else {
@@ -546,6 +548,7 @@ PHP_FUNCTION(utf8_endswith) // TODO: tests
     if (substring_cp_count > string_cp_count) {
         RETURN_FALSE;
     }
+    // TODO: locale support
     ret = utf8_region_matches(
         NULL,
         string, string_len, -substring_cp_count,
@@ -554,7 +557,7 @@ PHP_FUNCTION(utf8_endswith) // TODO: tests
         "" /* locale */, ignore_case,
         &status
     );
-    intl_error_set_code(NULL, status TSRMLS_CC);
+    intl_error_non_quiet_set_code(status TSRMLS_CC);
     if (U_FAILURE(status)) {
         RETURN_FALSE;
     } else {
@@ -707,6 +710,7 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first, int want_
         needle_len = cus_length;
     }
     status = U_ZERO_ERROR;
+    // TODO: locale support
     found = utf8_find(
         NULL,
         haystack, haystack_len,
@@ -715,7 +719,7 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first, int want_
         ignore_case,
         &status
     );
-    intl_error_set_code(NULL, status TSRMLS_CC);
+    intl_error_non_quiet_set_code(status TSRMLS_CC);
     if (U_FAILURE(status)) {
         RETURN_FALSE;
     }
@@ -1320,10 +1324,8 @@ PHP_FUNCTION(utf8_unescape) // TODO: tests
 
 /**
  * TEST:
- * - [lr]?trim
- * - pos
- * - rpos
- * - str
+ * - i?pos/i?rpos
+ * - i?str/i?rstr
  * - count_chars
  * - word_count
  * - validate
