@@ -67,9 +67,9 @@ static int32_t u_strToTitleWithoutBI(UChar *dest, int32_t destCapacity, const UC
     return u_strToTitle(dest, destCapacity, src, srcLength, NULL, locale, status);
 }
 
-static int32_t u_strFoldCaseDefault(UChar *dest, int32_t destCapacity, const UChar *src, int32_t srcLength, const char *UNUSED(locale), UErrorCode *status)
+static int32_t _u_strFoldCase(UChar *dest, int32_t destCapacity, const UChar *src, int32_t srcLength, const char *locale, UErrorCode *status)
 {
-    return u_strFoldCase(dest, destCapacity, src, srcLength, U_FOLD_CASE_DEFAULT, status);
+    return u_strFoldCase(dest, destCapacity, src, srcLength, uloc_is_turkic(locale) ? U_FOLD_CASE_EXCLUDE_SPECIAL_I : U_FOLD_CASE_DEFAULT, status);
 }
 
 struct case_mapping_t {
@@ -79,7 +79,7 @@ struct case_mapping_t {
 
 static const struct case_mapping_t unicode_case_mapping[UCASE_COUNT] = {
     { NULL,                                                NULL },
-    { (u8_func_full_case_mapping_t) ucasemap_utf8FoldCase, u_strFoldCaseDefault },
+    { (u8_func_full_case_mapping_t) ucasemap_utf8FoldCase, _u_strFoldCase },
     { (u8_func_full_case_mapping_t) ucasemap_utf8ToLower,  u_strToLower },
     { (u8_func_full_case_mapping_t) ucasemap_utf8ToUpper,  u_strToUpper },
     { ucasemap_utf8ToTitle,                                u_strToTitleWithoutBI }
