@@ -3,11 +3,6 @@
 # define INTL_UNICODE_H
 
 # ifdef ZEND_DEBUG
-#  ifdef HAVE_ASSERT_H
-#   include <assert.h>
-#  else
-#   define assert(expr)
-#  endif /* HAVE_ASSERT_H */
 #  include <php.h>
 #  include <unicode/ustdio.h>
 static const inline char *ubasename(const char *filename)
@@ -27,7 +22,6 @@ static const inline char *ubasename(const char *filename)
         u_fprintf(ustderr, "%s:%d:" format " in %s()\n", ubasename(__FILE__), __LINE__, ## __VA_ARGS__, __func__); \
     } while (0);
 # else
-#  define assert(expr)
 #  define debug(format, ...)
 # endif /* ZEND_DEBUG */
 
