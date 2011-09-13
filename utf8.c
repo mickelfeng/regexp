@@ -14,6 +14,12 @@
 #include <unicode/ustring.h>
 #include "utf16.h"
 #include "utf8.h"
+#include "utf8_priv_casefolding.h"
+
+int utf8_casecmp(const char *a, int a_len, const char *b, int b_len, const char *locale);
+char *utf8_stristr(const char *s1, int s1_len, const char *s2, int s2_len, const char *locale);
+char *utf8_stristr_ex(const char *s1, int s1_len, const char *s2, int s2_len, const char *locale);
+int32_t MY_utf8_foldcase(char *dst, int32_t dst_len, const char *src, int32_t src_len, const char *locale, UErrorCode *status);
 
 #define UTF8_3_4_IS_ILLEGAL(b) (((b) < 0x80) || ((b) > 0xBF))
 
@@ -127,7 +133,7 @@ UBool utf8_validate(const uint8_t *string, int32_t string_len, UErrorCode *statu
     end = ((uint8_t *) string) + string_len;
     while (end > p) {
         cplen = utf8_count_bytes[*p];
-        if (cplen < 0/* || cplen > U8_MAX_LENGTH*/) {
+        if (cplen < 1/* || cplen > U8_MAX_LENGTH*/) {
             *status = U_ILLEGAL_CHAR_FOUND;
             return FALSE;
         }
@@ -182,12 +188,71 @@ int utf8_cp_to_cu(const char *string, int string_len, int32_t cp_offset, int32_t
     return TRUE;
 }
 
+// #define CASE_FOLD_WITHOUT_PREFLIGHTING 1
+// #define ICU_CASE_FOLDING_IMPLEMENTATION 1
+/*
++---------------+-----+----------+
+| !preflighting | icu | time     |
++---------------+-----+----------+
+| 0             | 0   | 0.266812 |
+| 0             | 1   | 0.193620 |
+| 1             | 0   | 0.159716 |
+| 1             | 1   | 0.086540 |
++---------------+-----+----------+
+*/
 void utf8_foldcase(char **target, int32_t *target_len, const char *src, int src_len, const char *locale, UErrorCode *status)
 {
+#ifdef CASE_FOLD_WITHOUT_PREFLIGHTING
+    int32_t allocated;
+
+    *status = U_ZERO_ERROR;
+    if (0 == src_len) {
+        *target = mem_new(**target);
+        **target = '\0';
+        *target_len = 0;
+        return;
+    }
+    allocated = UTF8_CASE_FOLDED_MAX_CU_LENGTH * src_len + 1;
+    *target = mem_new_n(**target, allocated);
+# ifdef ICU_CASE_FOLDING_IMPLEMENTATION
+    {
+        UCaseMap *cm;
+
+        cm = ucasemap_open(locale, uloc_is_turkic(locale) ? U_FOLD_CASE_EXCLUDE_SPECIAL_I : U_FOLD_CASE_DEFAULT, status);
+        if (U_SUCCESS(*status)) {
+            ucasemap_utf8FoldCase(cm, *target, allocated, src, src_len, status);
+        }
+        if (U_SUCCESS(*status)) {
+            ucasemap_close(cm);
+        }
+    }
+# else
+    *target_len = MY_utf8_foldcase(*target, allocated, src, src_len, locale, status);
+# endif /* ICU_CASE_FOLDING_IMPLEMENTATION */
+    assert(*target_len < allocated);
+    if (U_FAILURE(*status)) {
+        efree(*target);
+        *target = NULL;
+        *target_len = 0;
+    } else {
+        *(*target + *target_len) = '\0';
+        assert(U_ZERO_ERROR == *status);
+    }
+#else
+# ifdef ICU_CASE_FOLDING_IMPLEMENTATION
     utf8_fullcase(target, target_len, src, src_len, locale, UCASE_FOLD, status);
+# else
+    *target_len = MY_utf8_foldcase(NULL, 0, src, src_len, locale, status);
+    if (U_BUFFER_OVERFLOW_ERROR == *status) {
+        *status = U_ZERO_ERROR;
+        *target = mem_new_n(**target, *target_len + 1);
+        MY_utf8_foldcase(*target, *target_len + 1, src, src_len, locale, status);
+    }
+# endif /* ICU_CASE_FOLDING_IMPLEMENTATION */
+#endif /* CASE_FOLD_WITHOUT_PREFLIGHTING */
 }
 
-static inline char *zend_binary_memrnstr(char *haystack, char *needle, int needle_len, char *end)
+static inline char *zend_binary_memrnstr(const char *haystack, const char *needle, int needle_len, const char * const end)
 {
     char ne;
     char *p;
@@ -203,7 +268,7 @@ static inline char *zend_binary_memrnstr(char *haystack, char *needle, int needl
         return NULL;
     }
 
-    p = end - needle_len;
+    p = ((char *) end) - needle_len;
     while (p >= haystack) {
         if (NULL == (p = (char *) memrchr(haystack, *needle, p - haystack))) {
             return NULL;
@@ -246,11 +311,16 @@ char *utf8_find(
     }
     if (NULL == ucol) {
         if (case_insensitive) {
-            // TODO
             if (search_first) {
-                // first
+// TODO: locale + UT + benchmarks
+#ifdef NO_GLOBAL_CASE_FOLDING
+                found = utf8_stristr(haystack + start_cu_offset, haystack_len - start_cu_offset, needle, needle_len, "fr");
+#else
+                found = utf8_stristr_ex(haystack + start_cu_offset, haystack_len - start_cu_offset, needle, needle_len, "fr");
+#endif
             } else {
                 // last
+                debug("Not yet implemented");
             }
         } else {
             if (search_first) {
@@ -318,6 +388,7 @@ int utf8_region_matches(
     }
     if (NULL == ucol) {
         if (case_insensitive) {
+#if 1
             char *cased_string1 = NULL;
             int cased_string1_len = 0;
             char *cased_string2 = NULL;
@@ -341,6 +412,13 @@ int utf8_region_matches(
             ret = zend_binary_strcmp(cased_string1, cased_string1_len, cased_string2, cased_string2_len);
             efree(cased_string1);
             efree(cased_string2);
+#else
+            ret = utf8_casecmp(
+                string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset,
+                string2 + string2_start_cu_offset, string2_end_cu_offset - string2_start_cu_offset,
+                locale
+            );
+#endif
         } else {
             ret = zend_binary_strcmp(
                 string1 + string1_start_cu_offset, string1_end_cu_offset - string1_start_cu_offset,
@@ -466,22 +544,21 @@ static int hexadecimal_digit(char c)
 UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target, int32_t *target_len, UErrorCode *status)
 {
     UChar32 lead;
-    const char *end;
     int32_t cucount, i;
-    char *s, *lead_offset;
+    const uint8_t *s, *lead_offset;
     UBool trail_expected = FALSE;
     int base, mindigits, maxdigits;
+    const uint8_t * const end = string + string_len;
 
     /*if (NULL == target || *target_len < 0) {
         *status = U_ILLEGAL_ARGUMENT_ERROR;
         return FALSE;
     }*/
 
-    end = string + string_len;
     *target_len = string_len;
     for (s = string; s < end; /* NOP */) {
-        cucount = utf8_count_bytes[*string];
-        if (cucount < 0 || cucount > U8_MAX_LENGTH) {
+        cucount = utf8_count_bytes[*s];
+        if (cucount < 0/* || cucount > U8_MAX_LENGTH*/) {
             *status = U_ILLEGAL_CHAR_FOUND;
             return FALSE;
         }
@@ -702,4 +779,343 @@ UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target,
     *(*target + *target_len) = '\0';
 
     return TRUE;
+}
+
+// NOTE: caller should assumes first than p + ncf_cus_len is not out of range (truncated code point)
+static const uint8_t *utf8_char_fold_case(const uint8_t *p, uint8_t ncf_cus_len, uint8_t *cf_cus_len, UBool isTurkic)
+{
+    case_folding_data cfd = { 0, 0 };
+
+    switch (ncf_cus_len) {
+        case 1:
+            if (isTurkic && 0x49 == *p) {
+                cfd = cf_map[ARRAY_SIZE(cf_map) - 1]; // I (U+0049) becomes ı (U+0131)
+            } else {
+                cfd = cf_map[*p];
+            }
+            break;
+        case 2:
+        {
+            int8_t delta;
+
+            if (isTurkic && 0xC4 == p[0] && 0xB0 == p[1]) {
+                cfd = cf_map[0x049]; // İ (U+0130) becomes i (U+0069)
+            } else if ((delta = cf_deltas123[(*p & 0x1C) >> 2]) >= 0) {
+                cfd = cf_map[delta * 256 + ((p[0] & 0x3) << 6 | (p[1] & 0x3F))];
+            }
+            break;
+        }
+        case 3:
+        {
+            int8_t delta;
+
+            if ((delta = cf_deltas123[(p[0] & 0xF) << 4 | ((p[1] & 0x3C) >> 2) & 0x0F]) >= 0) {
+                cfd = cf_map[delta * 256 + ((p[1] & 0x3) << 6 | (p[2] & 0x3F))];
+            }
+            break;
+        }
+        case 4:
+            if (0xF0 == p[0] && 0x90 == p[1] && 0x90 == p[2] && (p[3] >= 0x80 || p[3] <= 0xA7)) {
+                cfd = cf_map[ARRAY_SIZE(cf_map) - 2 /* U+0000 + U+0049 for TR) */ - (0xA7 - 0x80) + (p[3] - 0x80)];
+            }
+            break;
+    }
+
+// debug(">%c< %X cfd.length = %d, cfd.index = %d", *p, *p, cfd.length, cfd.index);
+    if (0 == cfd.length) {
+        *cf_cus_len = ncf_cus_len;
+        return p;
+    } else {
+        *cf_cus_len = cfd.length;
+        return cf_data + cfd.index;
+    }
+}
+
+int32_t MY_utf8_foldcase(char *dst, int32_t dst_len, const char *src, int32_t src_len, const char *locale, UErrorCode *status)
+{
+    uint8_t *p;
+    UBool turkic;
+    uint8_t cf, ncf;
+    int32_t ret = 0;
+    const uint8_t *r;
+    const uint8_t * const src_end = src + src_len;
+
+    turkic = uloc_is_turkic(locale);
+    p = (uint8_t *) src;
+    if (NULL != dst) {
+        while (p < src_end && dst_len > 0) {
+            if ((ncf = utf8_count_bytes[*p]) < 1) {
+                *status = U_ILLEGAL_CHAR_FOUND;
+                return ret;
+            }
+            if (p + ncf > src_end) {
+                *status = U_TRUNCATED_CHAR_FOUND;
+                return ret;
+            }
+            r = utf8_char_fold_case(p, ncf, &cf, turkic);
+            memcpy(dst + ret, r, cf);
+            ret += cf;
+            p += ncf;
+        }
+        if (ret == dst_len) {
+            *status = U_STRING_NOT_TERMINATED_WARNING;
+        } else {
+            dst[ret] = '\0';
+        }
+    }
+    if (p < src_end) {
+        *status = U_BUFFER_OVERFLOW_ERROR;
+        while (p < src_end) {
+            ncf = utf8_count_bytes[*p];
+            utf8_char_fold_case(p, ncf, &cf, turkic);
+            ret += cf;
+            p += ncf;
+        }
+    }
+
+    return ret;
+}
+
+#define U8_READ(/*const char **/ s, /*UChar32*/ c) \
+    do { \
+        int __i = 0; \
+        U8_NEXT_UNSAFE(s, __i, c); \
+    } while (0);
+
+int utf8_casecmp(const char *s1, int s1_len, const char *s2, int s2_len, const char *locale)
+{
+#if 0
+    UChar32 a, b, p, q;
+#endif
+    UBool turkic;
+    const uint8_t *cf_s1, *cf_s2;   // case folded equivalent of current code point (may be thrice longer)
+    uint8_t ncf_s1_len, ncf_s2_len; // initial (before case folding) length of current code point
+    uint8_t cf_s1_len, cf_s2_len;   // total length (in CU) of case folded equivalent
+
+    if (s1 == s2) {
+        return 0;
+    }
+    if (0 == s1_len || 0 == s2_len) {
+        return s1_len - s2_len;
+    }
+    turkic = uloc_is_turkic(locale);
+    cf_s1_len = cf_s2_len = 0;
+    do {
+        if (0 == cf_s1_len) {
+#if 0
+            U8_READ(s1, p);
+            debug("[S1] %05X", p);
+#endif
+            ncf_s1_len = utf8_count_bytes[(uint8_t) *s1]; // TODO: assume ncf_sX_len in [0;4]
+            cf_s1 = utf8_char_fold_case((const uint8_t *) s1, ncf_s1_len, &cf_s1_len, turkic);
+            s1_len -= ncf_s1_len; // TODO: assume we are not out of range (code point truncated)
+            s1 += ncf_s1_len; // TODO: assume we are not out of range (code point truncated)
+        }
+        if (0 == cf_s2_len) {
+#if 0
+            U8_READ(s2, q);
+            debug("[S2] %05X", q);
+#endif
+            ncf_s2_len = utf8_count_bytes[(uint8_t) *s2]; // TODO: assume ncf_sX_len in [0;4]
+            cf_s2 = utf8_char_fold_case((const uint8_t *) s2, ncf_s2_len, &cf_s2_len, turkic);
+            s2_len -= ncf_s2_len; // TODO: assume we are not out of range (code point truncated)
+            s2 += ncf_s2_len; // TODO: assume we are not out of range (code point truncated)
+        }
+        while (cf_s1_len > 0 && cf_s2_len > 0) {
+            int ret;
+            uint8_t cf_cp_s1, cf_cp_s2;
+
+#if 0
+            U8_READ(cf_s1, a);
+            U8_READ(cf_s2, b);
+            debug("[CF CMP] %05X <> %05X %d %d", a, b, cf_s1_len, cf_s2_len);
+#endif
+            cf_cp_s1 = utf8_count_bytes[*cf_s1];
+            cf_cp_s2 = utf8_count_bytes[*cf_s2];
+            if (cf_cp_s1 == cf_cp_s2) {
+                if (0 != (ret = memcmp(cf_s1, cf_s2, cf_cp_s1))) {
+                    return ret;
+                }
+            } else {
+                return cf_cp_s1 - cf_cp_s2;
+            }
+            cf_s1 += cf_cp_s1;
+            cf_s1_len -= cf_cp_s1;
+            cf_s2 += cf_cp_s2;
+            cf_s2_len -= cf_cp_s2;
+        }
+    } while (s1_len > 0 && s2_len > 0);
+
+    return s1_len - s2_len;
+}
+
+#if 0
+// un pointeur sur le début de correspondance qui pourrait/semble se profiler
+// si les caractères/CP case foldés courants ne correspondent pas :
+//    réinitialiser match à NULL ; réinitialiser sur le curseur sur needle (s2 ici) à son début
+// si on atteint la fin (case foldée) de needle (s2 ici), on retourne match
+
+char *strcasestr (char *haystack, char *needle) {
+    char *p, *startn = 0, *np = 0;
+
+    // np curseur sur needle
+    for (p = haystack; *p; p++) {
+        if (np) {
+            if (toupper(*p) == toupper(*np)) {
+                if (!*++np)
+                    return startn;
+            } else
+                np = 0;
+        } else if (toupper(*p) == toupper(*needle)) {
+            np = needle + 1;
+            startn = p;
+        }
+    }
+
+    return 0;
+}
+#endif
+
+/**
+ * TODO stristr(_ex)?:
+ * - UErrorCode as parameter?
+ * - replace int haystack_len by const char * const haystack_end?
+ **/
+
+char *utf8_stristr_ex(const char *haystack, int haystack_len, const char *needle, int needle_len, const char *locale)
+{
+    UBool turkic;
+    UErrorCode status;
+    const char *match, *hp, *cfnp;
+    const uint8_t *cf_H;
+    uint8_t ncf_H_len;
+    uint8_t cf_H_len;
+    const char */* const */CFN_end;
+    const char * const H_end = haystack + haystack_len;
+
+    char *case_folded_needle = NULL;
+    int32_t case_folded_needle_len = 0;
+
+    match = NULL;
+    if (haystack == needle) {
+        return (char *) haystack;
+    }
+    if (0 == haystack_len || 0 == needle_len) {
+        return NULL;
+    }
+    status = U_ZERO_ERROR;
+    utf8_foldcase(&case_folded_needle, &case_folded_needle_len, needle, needle_len, locale, &status);
+    if (U_FAILURE(status)) {
+        if (NULL != case_folded_needle) {
+            efree(case_folded_needle);
+        }
+        return NULL;
+    }
+    CFN_end = case_folded_needle + case_folded_needle_len;
+    hp = haystack;
+    cfnp = case_folded_needle;
+    turkic = uloc_is_turkic(locale);
+    cf_H_len = 0;
+    do {
+        if (0 == cf_H_len) {
+            ncf_H_len = utf8_count_bytes[(uint8_t) *hp]; // TODO: assume ncf_X_len in [0;4]
+            cf_H = utf8_char_fold_case((const uint8_t *) hp, ncf_H_len, &cf_H_len, turkic);
+            hp += ncf_H_len; // TODO: assume we are not out of range (code point truncated)
+        }
+        while (cf_H_len > 0) {
+            int ret;
+            uint8_t cf_cp_H, cf_cp_N;
+
+            cf_cp_H = utf8_count_bytes[*cf_H];
+            cf_cp_N = utf8_count_bytes[(uint8_t) *cfnp];
+            if (cf_cp_H == cf_cp_N && 0 == memcmp(cf_H, cfnp, cf_cp_H)) {
+                cfnp += cf_cp_N;
+                if (NULL == match) {
+                    match = hp - ncf_H_len;
+                }
+                if (cfnp == CFN_end) {
+                    efree(case_folded_needle);
+                    return (char *) match;
+                }
+            } else {
+                cfnp = case_folded_needle;
+                match = NULL;
+            }
+            cf_H += cf_cp_H;
+            cf_H_len -= cf_cp_H;
+        }
+    } while (hp < H_end);
+
+    efree(case_folded_needle);
+
+    return NULL;
+}
+
+char *utf8_stristr(const char *haystack, int haystack_len, const char *needle, int needle_len, const char *locale)
+{
+    UBool turkic;
+    const char *match, *np, *hp;
+    const uint8_t *cf_H, *cf_N;
+    uint8_t ncf_H_len, ncf_N_len;
+    uint8_t cf_H_len, cf_N_len;
+    const char * const N_end = needle + needle_len;
+    const char * const H_end = haystack + haystack_len;
+
+    match = NULL;
+    if (haystack == needle) {
+        return (char *) haystack;
+    }
+    if (0 == haystack_len || 0 == needle_len) {
+        return NULL;
+    }
+    hp = haystack;
+    np = needle;
+    turkic = uloc_is_turkic(locale);
+    cf_H_len = cf_N_len = 0;
+    do {
+        if (0 == cf_H_len) {
+            ncf_H_len = utf8_count_bytes[(uint8_t) *hp]; // TODO: assume ncf_sX_len in [0;4]
+            cf_H = utf8_char_fold_case((const uint8_t *) hp, ncf_H_len, &cf_H_len, turkic);
+            hp += ncf_H_len; // TODO: assume we are not out of range (code point truncated)
+        }
+        if (0 == cf_N_len) {
+            ncf_N_len = utf8_count_bytes[(uint8_t) *np]; // TODO: assume ncf_sX_len in [0;4]
+            cf_N = utf8_char_fold_case((const uint8_t *) np, ncf_N_len, &cf_N_len, turkic);
+            np += ncf_N_len; // TODO: assume we are not out of range (code point truncated)
+        }
+        while (cf_H_len > 0 && cf_N_len > 0) {
+            uint8_t cf_cp_H, cf_cp_N;
+
+            cf_cp_H = utf8_count_bytes[*cf_H];
+            cf_cp_N = utf8_count_bytes[*cf_N];
+            if (cf_cp_H == cf_cp_N && 0 == memcmp(cf_H, cf_N, cf_cp_H)) {
+                cf_N += cf_cp_N;
+                cf_N_len -= cf_cp_N;
+                if (NULL == match) {
+                    match = hp - ncf_H_len;
+                }
+                if (np == N_end) {
+                    return (char *) match;
+                }
+            } else {
+                np = needle;
+                cf_N_len = 0;
+                match = NULL;
+            }
+            cf_H += cf_cp_H;
+            cf_H_len -= cf_cp_H;
+        }
+    } while (hp < H_end);
+
+    return NULL;
+}
+
+char *utf8_strristr_ex(const char *haystack, int haystack_len, const char *needle, int needle_len, const char *locale)
+{
+    return NULL;
+}
+
+char *utf8_strristr(const char *haystack, int haystack_len, const char *needle, int needle_len, const char *locale)
+{
+    return NULL;
 }
