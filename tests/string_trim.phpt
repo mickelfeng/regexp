@@ -4,8 +4,6 @@ Test utf8_[lr]?trim function
 <?php if (!extension_loaded('intl'))/* || version_compare(PHP_VERSION, '5.2.5', '<'))*/ echo 'skip'; ?>
 --FILE--
 <?php
-ini_set('intl.error_level', E_WARNING);
-
 require(__DIR__ . '/ut_regexp_common.inc');
 
 $ws = array(

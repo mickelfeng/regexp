@@ -28,6 +28,33 @@ $s = "\xF0\x9D\x98\xB4"; # 1D634
 $t = "\xF0\x9D\x98\xB5"; # 1D635
 $w = "\xF0\x9D\x98\xB8"; # 1D638
 
+$N0="\xF0\x9D\x9F\x8E"; # 1D7CE, Nd
+$N1="\xF0\x9D\x9F\x8F";
+$N2="\xF0\x9D\x9F\x90";
+$N3="\xF0\x9D\x9F\x91";
+$N4="\xF0\x9D\x9F\x92";
+$N5="\xF0\x9D\x9F\x93";
+$N6="\xF0\x9D\x9F\x94";
+$N7="\xF0\x9D\x9F\x95";
+$N8="\xF0\x9D\x9F\x96";
+$N9="\xF0\x9D\x9F\x97";
+
+$ff = "\xEF\xAC\x80";  # FB00
+$fi = "\xEF\xAC\x81";  # FB01
+$ffi = "\xEF\xAC\x83"; # FB03
+
+// Prefixes: N for not case folded ; C for case folded equivalent
+
+# 03B0 (2) <=> 03C5 0308 0301 (6)
+$N03B0 = "\xCE\xB0";
+$C03B0 = "\xCF\x85\xCC\x88\xCC\x81";
+# 0587 (2) <=> 0565 0582 (4)
+$N0587 = "\xD6\x87";
+$C0587 = "\xD5\xA5\xD6\x82";
+# 1FB7 (3) <=> 03B1 0342 03B9 (6)
+$N1FB7 = "\xE1\xBE\xB7";
+$C1FB7 = "\xCE\xB1\xCD\x82\xCE\xB9";
+
 /* ==================== FUNC ==================== */
 
 function ut_regexp_create($oo)
