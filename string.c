@@ -704,6 +704,8 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first, int want_
     int needle_len = 0;
     int start_cp_offset = 0;
     UErrorCode status;
+    int locale_len = 0;
+    char *locale = NULL;
     zend_bool before = FALSE;
     zend_bool ignore_case = FALSE;
     char cus[U8_MAX_LENGTH + 1] = { 0 };
@@ -711,11 +713,11 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first, int want_
 
     intl_error_reset(NULL TSRMLS_CC);
     if (want_only_pos) {
-        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|lb", &haystack, &haystack_len, &zneedle, &start_cp_offset, &ignore_case)) {
+        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|lbs", &haystack, &haystack_len, &zneedle, &start_cp_offset, &ignore_case, &locale, &locale_len)) {
             return;
         }
     } else {
-        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|lbb", &haystack, &haystack_len, &zneedle, &start_cp_offset, &ignore_case, &before)) {
+        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|lbbs", &haystack, &haystack_len, &zneedle, &start_cp_offset, &before, &ignore_case, &locale, &locale_len)) {
             return;
         }
     }
@@ -737,12 +739,14 @@ static void utf8_index(INTERNAL_FUNCTION_PARAMETERS, int search_first, int want_
         needle_len = cus_length;
     }
     status = U_ZERO_ERROR;
-    // TODO: locale support
+    if (ignore_case && 0 == locale_len) {
+        locale = INTL_G(default_locale);
+    }
     found = utf8_find(
         NULL,
         haystack, haystack_len,
         needle, needle_len,
-        start_cp_offset, NULL /* locale */, search_first,
+        start_cp_offset, locale, search_first,
         ignore_case,
         &status
     );
@@ -783,12 +787,12 @@ PHP_FUNCTION(utf8_lindex) // TODO: tests
     utf8_index(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, TRUE);
 }
 
-PHP_FUNCTION(utf8_lfind) // TODO: tests
+PHP_FUNCTION(utf8_rfind) // TODO: tests
 {
     utf8_index(INTERNAL_FUNCTION_PARAM_PASSTHRU, FALSE, FALSE);
 }
 
-PHP_FUNCTION(utf8_rfind) // TODO: tests
+PHP_FUNCTION(utf8_lfind) // TODO: tests
 {
     utf8_index(INTERNAL_FUNCTION_PARAM_PASSTHRU, TRUE, FALSE);
 }

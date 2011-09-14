@@ -9,6 +9,8 @@ ext/intl/regexp/tests/string_chr.phpt
 ext/intl/regexp/tests/string_fullcasemapping.phpt
 ext/intl/regexp/tests/string_ireplace.phpt
 ext/intl/regexp/tests/string_len.phpt
+ext/intl/regexp/tests/string_lfind.phpt
+ext/intl/regexp/tests/string_lindex.phpt
 ext/intl/regexp/tests/string_ncmp.phpt
 ext/intl/regexp/tests/string_ord.phpt
 ext/intl/regexp/tests/string_reverse.phpt
