@@ -406,8 +406,14 @@ static void cmp(INTERNAL_FUNCTION_PARAMETERS, int ignore_case, int limited_lengt
 
     intl_error_reset(NULL TSRMLS_CC);
     if (limited_length) {
-        if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl|s", &string1, &string1_len, &string2, &string2_len, &length, &locale, &locale_len)) {
-            return;
+        if (ignore_case) {
+            if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl|s", &string1, &string1_len, &string2, &string2_len, &length, &locale, &locale_len)) {
+                return;
+            }
+        } else {
+            if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl", &string1, &string1_len, &string2, &string2_len, &length)) {
+                return;
+            }
         }
         if (length < 0) {
             php_error_docref(NULL TSRMLS_CC, E_WARNING, "Length must be greater than or equal to 0");
@@ -418,7 +424,7 @@ static void cmp(INTERNAL_FUNCTION_PARAMETERS, int ignore_case, int limited_lengt
             return;
         }
     }
-    if (0 == locale_len) {
+    if (ignore_case && 0 == locale_len) {
         locale = INTL_G(default_locale);
     }
     ret = utf8_region_matches(

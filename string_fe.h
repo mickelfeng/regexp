@@ -15,7 +15,7 @@ PHP_FE(utf8_slice_replace, arginfo_slice_replace)
 
 PHP_FE(utf8_casecmp, arginfo_casecmp)
 PHP_FE(utf8_ncmp, arginfo_ncmp)
-PHP_FE(utf8_ncasecmp, arginfo_ncmp)
+PHP_FE(utf8_ncasecmp, arginfo_ncasecmp)
 PHP_FE(utf8_endswith, arginfo_starts_ends_with)
 PHP_FE(utf8_startswith, arginfo_starts_ends_with)
 

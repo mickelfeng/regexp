@@ -48,9 +48,17 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_ncmp, 0, 0, 3)
     ZEND_ARG_INFO(0, length)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_casecmp, 0, 0, 3)
+    ZEND_ARG_INFO(0, string1)
+    ZEND_ARG_INFO(0, string2)
+    ZEND_ARG_INFO(0, length)
+    ZEND_ARG_INFO(0, locale)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_casecmp, 0, 0, 2)
     ZEND_ARG_INFO(0, string1)
     ZEND_ARG_INFO(0, string2)
+    ZEND_ARG_INFO(0, locale)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_index, 0, 0, 2)
