@@ -86,7 +86,7 @@ PHP_FUNCTION(utf8_count_chars) // TODO: tests
         RETURN_FALSE;
     }
     if (mode < 0 || mode >= _LAST_MODE) {
-        php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unknown mode");
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid mode value %ld", mode);
         RETURN_FALSE;
     }
     set = uset_openEmpty();
@@ -247,7 +247,8 @@ PHP_FUNCTION(utf8_count_words) // TODO: tests
     enum {
         COUNT_ONLY    = 0,
         INDEXED_WORDS = 1,
-        OFFSET_WORDS  = 2
+        OFFSET_WORDS  = 2,
+        _LAST_FORMAT
     };
 
     zval *ret = NULL;
@@ -263,6 +264,10 @@ PHP_FUNCTION(utf8_count_words) // TODO: tests
 
     intl_error_reset(NULL TSRMLS_CC);
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "s|ls", &string, &string_len, &format, &locale, &locale_len)) {
+        RETURN_FALSE;
+    }
+    if (format < 0 || format >= _LAST_FORMAT) {
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid format value %ld", format);
         RETURN_FALSE;
     }
     if (0 == locale_len) {
