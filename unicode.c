@@ -36,7 +36,7 @@ int unicode_convert_needle_to_cp(zval *needle, UChar32 *cp TSRMLS_DC)
         }
         default:
         {
-            php_error_docref(NULL TSRMLS_CC, E_WARNING, "needle is not a string or an integer");
+            php_error_docref(NULL TSRMLS_CC, E_WARNING, "needle or substring is not a string neither an integer");
             return FAILURE;
         }
     }

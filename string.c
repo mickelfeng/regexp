@@ -517,14 +517,30 @@ PHP_FUNCTION(utf8_startswith) // TODO: tests
     int substring_len = 0;
     int locale_len = 0;
     char *locale = NULL;
+    zval *zsubstring = NULL;
     int32_t string_cp_count;
     int32_t substring_cp_count;
     zend_bool ignore_case = FALSE;
     UErrorCode status = U_ZERO_ERROR;
+    int cus_length = 0;
+    char cus[U8_MAX_LENGTH + 1] = { 0 };
 
     intl_error_reset(NULL TSRMLS_CC);
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|bs", &string, &string_len, &substring, &substring_len, &ignore_case, &locale, &locale_len)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|bs", &string, &string_len, &zsubstring, &ignore_case, &locale, &locale_len)) {
         return;
+    }
+    if (IS_STRING == Z_TYPE_P(zsubstring)) {
+        substring = Z_STRVAL_P(zsubstring);
+        substring_len = Z_STRLEN_P(zsubstring);
+    } else {
+        UChar32 c;
+
+        if (SUCCESS != unicode_convert_needle_to_cp(zsubstring, &c TSRMLS_CC)) {
+            RETURN_FALSE;
+        }
+        U8_APPEND_UNSAFE(cus, cus_length, c);
+        substring = cus;
+        substring_len = cus_length;
     }
     string_cp_count = utf8_countChar32((const uint8_t *) string, string_len);
     substring_cp_count = utf8_countChar32((const uint8_t *) substring, substring_len);
@@ -559,14 +575,30 @@ PHP_FUNCTION(utf8_endswith) // TODO: tests
     int substring_len = 0;
     int locale_len = 0;
     char *locale = NULL;
+    zval *zsubstring = NULL;
     int32_t string_cp_count;
     int32_t substring_cp_count;
     zend_bool ignore_case = FALSE;
     UErrorCode status = U_ZERO_ERROR;
+    int cus_length = 0;
+    char cus[U8_MAX_LENGTH + 1] = { 0 };
 
     intl_error_reset(NULL TSRMLS_CC);
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|bs", &string, &string_len, &substring, &substring_len, &ignore_case, &locale, &locale_len)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|bs", &string, &string_len, &zsubstring, &ignore_case, &locale, &locale_len)) {
         return;
+    }
+    if (IS_STRING == Z_TYPE_P(zsubstring)) {
+        substring = Z_STRVAL_P(zsubstring);
+        substring_len = Z_STRLEN_P(zsubstring);
+    } else {
+        UChar32 c;
+
+        if (SUCCESS != unicode_convert_needle_to_cp(zsubstring, &c TSRMLS_CC)) {
+            RETURN_FALSE;
+        }
+        U8_APPEND_UNSAFE(cus, cus_length, c);
+        substring = cus;
+        substring_len = cus_length;
     }
     string_cp_count = utf8_countChar32((const uint8_t *) string, string_len);
     substring_cp_count = utf8_countChar32((const uint8_t *) substring, substring_len);
