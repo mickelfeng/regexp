@@ -11,6 +11,11 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_string, 0, 0, 1)
     ZEND_ARG_INFO(0, string)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_string_plus_1optional, 0, 0, 1)
+    ZEND_ARG_INFO(0, string)
+    ZEND_ARG_INFO(0, optional)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_count_words, 0, 0, 1)
     ZEND_ARG_INFO(0, string)
     ZEND_ARG_INFO(0, locale)
@@ -24,7 +29,6 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_wordwrap, 0, 0, 1)
     ZEND_ARG_INFO(0, replacement)
     ZEND_ARG_INFO(0, cut_word)
 ZEND_END_ARG_INFO()
-
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_split, 0, 0, 1)
     ZEND_ARG_INFO(0, string)
@@ -48,7 +52,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_ncmp, 0, 0, 3)
     ZEND_ARG_INFO(0, length)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_casecmp, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ncasecmp, 0, 0, 3)
     ZEND_ARG_INFO(0, string1)
     ZEND_ARG_INFO(0, string2)
     ZEND_ARG_INFO(0, length)

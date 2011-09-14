@@ -1,5 +1,5 @@
 PHP_FE(utf8_chr, arginfo_chr)
-PHP_FE(utf8_ord, arginfo_string)
+PHP_FE(utf8_ord, arginfo_string_plus_1optional)
 PHP_FE(utf8_len, arginfo_string)
 PHP_FE(utf8_reverse, arginfo_string)
 PHP_FE(utf8_shuffle, arginfo_string)
