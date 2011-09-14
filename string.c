@@ -473,6 +473,8 @@ PHP_FUNCTION(utf8_slice_cmp)
     int substring_len = 0;
     long substring_cp_offset = 0;
     long cp_length = -1;
+    int locale_len = 0;
+    char *locale = NULL;
     int32_t string_cp_count;
     int32_t substring_cp_count;
     zend_bool ignore_case = FALSE;
@@ -511,13 +513,15 @@ PHP_FUNCTION(utf8_startswith) // TODO: tests
     int string_len = 0;
     char *substring = NULL;
     int substring_len = 0;
+    int locale_len = 0;
+    char *locale = NULL;
     int32_t string_cp_count;
     int32_t substring_cp_count;
     zend_bool ignore_case = FALSE;
     UErrorCode status = U_ZERO_ERROR;
 
     intl_error_reset(NULL TSRMLS_CC);
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|b", &string, &string_len, &substring, &substring_len, &ignore_case)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|bs", &string, &string_len, &substring, &substring_len, &ignore_case, &locale, &locale_len)) {
         return;
     }
     string_cp_count = utf8_countChar32((const uint8_t *) string, string_len);
@@ -525,13 +529,15 @@ PHP_FUNCTION(utf8_startswith) // TODO: tests
     if (substring_cp_count > string_cp_count) {
         RETURN_FALSE;
     }
-    // TODO: locale support
+    if (ignore_case && 0 == locale_len) {
+        locale = INTL_G(default_locale);
+    }
     ret = utf8_region_matches(
         NULL,
         string, string_len, 0,
         substring, substring_len, 0,
         substring_cp_count,
-        "" /* locale */, ignore_case,
+        locale, ignore_case,
         &status
     );
     intl_error_non_quiet_set_code(status TSRMLS_CC);
@@ -549,13 +555,15 @@ PHP_FUNCTION(utf8_endswith) // TODO: tests
     int string_len = 0;
     char *substring = NULL;
     int substring_len = 0;
+    int locale_len = 0;
+    char *locale = NULL;
     int32_t string_cp_count;
     int32_t substring_cp_count;
     zend_bool ignore_case = FALSE;
     UErrorCode status = U_ZERO_ERROR;
 
     intl_error_reset(NULL TSRMLS_CC);
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|b", &string, &string_len, &substring, &substring_len, &ignore_case)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|bs", &string, &string_len, &substring, &substring_len, &ignore_case, &locale, &locale_len)) {
         return;
     }
     string_cp_count = utf8_countChar32((const uint8_t *) string, string_len);
@@ -563,13 +571,15 @@ PHP_FUNCTION(utf8_endswith) // TODO: tests
     if (substring_cp_count > string_cp_count) {
         RETURN_FALSE;
     }
-    // TODO: locale support
+    if (ignore_case && 0 == locale_len) {
+        locale = INTL_G(default_locale);
+    }
     ret = utf8_region_matches(
         NULL,
         string, string_len, -substring_cp_count,
         substring, substring_len, 0,
         substring_cp_count,
-        "" /* locale */, ignore_case,
+        locale, ignore_case,
         &status
     );
     intl_error_non_quiet_set_code(status TSRMLS_CC);
