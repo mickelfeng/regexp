@@ -262,7 +262,7 @@ PHP_FUNCTION(utf8_count_words) // TODO: tests
     UErrorCode status = U_ZERO_ERROR;
 
     intl_error_reset(NULL TSRMLS_CC);
-    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "s|sl", &string, &string_len, &locale, &locale_len, &format)) {
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "s|ls", &string, &string_len, &format, &locale, &locale_len)) {
         RETURN_FALSE;
     }
     if (0 == locale_len) {
