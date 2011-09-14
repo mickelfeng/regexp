@@ -84,6 +84,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_slice_cmp, 0, 0, 3)
     ZEND_ARG_INFO(0, substring_offset)
     ZEND_ARG_INFO(0, length)
     ZEND_ARG_INFO(0, ignore_case)
+    ZEND_ARG_INFO(0, locale)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_slice_count, 0, 0, 2)

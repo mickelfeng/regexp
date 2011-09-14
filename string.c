@@ -481,7 +481,7 @@ PHP_FUNCTION(utf8_slice_cmp)
     UErrorCode status = U_ZERO_ERROR;
 
     intl_error_reset(NULL TSRMLS_CC);
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sls|llb", &string, &string_len, &string_cp_offset, &substring, &substring_len, &substring_cp_offset, &cp_length, &ignore_case)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sls|llbs", &string, &string_len, &string_cp_offset, &substring, &substring_len, &substring_cp_offset, &cp_length, &ignore_case, &locale, &locale_len)) {
         return;
     }
     if (cp_length < 0) {
@@ -489,13 +489,15 @@ PHP_FUNCTION(utf8_slice_cmp)
         substring_cp_count = utf8_countChar32((const uint8_t *) substring, substring_len);
         cp_length = MIN(string_cp_count, substring_cp_count);
     }
-    // TODO: locale support
+    if (ignore_case && 0 == locale_len) {
+        locale = INTL_G(default_locale);
+    }
     ret = utf8_region_matches(
         NULL,
         string, string_len, string_cp_offset,
         substring, substring_len, substring_cp_offset,
         cp_length,
-        "" /* locale */, ignore_case,
+        locale, ignore_case,
         &status
     );
     intl_error_non_quiet_set_code(status TSRMLS_CC);
