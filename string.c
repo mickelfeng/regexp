@@ -331,6 +331,10 @@ PHP_FUNCTION(utf8_chr)
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &cp)) {
         return;
     }
+    if (cp < UCHAR_MIN_VALUE || cp > UCHAR_MAX_VALUE) {
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid code point");
+        RETURN_FALSE;
+    }
     s_len = U8_LENGTH(cp);
     s = mem_new_n(*s, s_len + 1);
     U8_APPEND_UNSAFE(s, i, cp);
