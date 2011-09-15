@@ -592,21 +592,23 @@ UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target,
                 case 't':
                 case 'v':
                 case '\\':
-                    *target_len--;
+                    --*target_len;
                     s++;
                     break;
                 case 'x': // \xXX
                     mindigits = maxdigits = 2;
                     base = 16;
-                    *target_len -= STRINGL("\\xXX");
+                    s++;
                     break;
                 case 'u': // \uXXXX
                     mindigits = maxdigits = 4;
                     base = 16;
+                    s++;
                     break;
                 case 'U': // \UXXXXXXXX
                     mindigits = maxdigits = 8;
                     base = 16;
+                    s++;
                     break;
             }
             if (mindigits > 0) {
@@ -614,7 +616,6 @@ UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target,
                 char c;
                 UChar32 result = 0;
 
-                s++;
                 while (s < end && n < maxdigits) {
                     digit = (8 == base ? octal_digit(*s) : hexadecimal_digit(*s));
                     if (digit < 0) {
@@ -632,7 +633,9 @@ UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target,
                     *status = U_ILLEGAL_CHAR_FOUND;
                     return FALSE;
                 }
-                if (4 == mindigits) { // \uXXXX
+                if (2 == mindigits) { // \xXX
+                    *target_len -= STRINGL("\\xXX") - U8_LENGTH(result);
+                } else if (4 == mindigits) { // \uXXXX
                     if (!U_IS_SURROGATE(result)) {
                         if (trail_expected) {
                             *status = U_ILLEGAL_ESCAPE_SEQUENCE;
@@ -734,25 +737,27 @@ UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target,
                 case 'x': // \xXX
                     mindigits = maxdigits = 2;
                     base = 16;
+                    s++;
                     break;
                 case 'u': // \uXXXX
                     mindigits = maxdigits = 4;
                     base = 16;
+                    s++;
                     break;
                 case 'U': // \UXXXXXXXX
                     mindigits = maxdigits = 8;
                     base = 16;
+                    s++;
                     break;
                 default:
                     *(*target + i++) = '\\';
-                    *(*target + i++) = *s;
+                    *(*target + i++) = *s++;
             }
             if (mindigits > 0) {
                 int n = 0, digit;
                 char c;
                 UChar32 result = 0;
 
-                s++;
                 while (s < end && n < maxdigits) {
                     digit = (8 == base ? octal_digit(*s) : hexadecimal_digit(*s));
                     if (digit < 0) {
@@ -770,7 +775,7 @@ UBool utf8_unescape(const uint8_t *string, int32_t string_len, uint8_t **target,
                     } else if (U16_IS_SURROGATE_TRAIL(result)) {
                         U8_APPEND_UNSAFE(*target, i, U16_GET_SUPPLEMENTARY(lead, result));
                     }
-                } else if (8 == mindigits) {
+                } else {
                     U8_APPEND_UNSAFE(*target, i, result);
                 }
             }

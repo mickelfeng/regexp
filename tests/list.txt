@@ -23,3 +23,4 @@ ext/intl/regexp/tests/string_slice_replace.phpt
 ext/intl/regexp/tests/string_split.phpt
 ext/intl/regexp/tests/string_tr.phpt
 ext/intl/regexp/tests/string_trim.phpt
+ext/intl/regexp/tests/string_unescape.phpt
