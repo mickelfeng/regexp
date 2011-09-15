@@ -858,6 +858,9 @@ int32_t MY_utf8_foldcase(char *dst, int32_t dst_len, const char *src, int32_t sr
                 return ret;
             }
             r = utf8_char_fold_case(p, ncf, &cf, turkic);
+            if (dst_len < cf) {
+                break;
+            }
             memmove(dst + ret, r, cf);
             ret += cf;
             p += ncf;
@@ -875,6 +878,44 @@ int32_t MY_utf8_foldcase(char *dst, int32_t dst_len, const char *src, int32_t sr
             utf8_char_fold_case(p, ncf, &cf, turkic);
             ret += cf;
             p += ncf;
+        }
+    }
+
+    return ret;
+}
+
+int32_t utf8_simple_case_folding(char *dst, int32_t dst_len, const char *src, int32_t src_len, const char *locale, UErrorCode *status)
+{
+    UChar32 c;
+    int cp_len;
+    int32_t i, ret;
+    uint32_t options;
+
+    i = ret = 0;
+    options = uloc_is_turkic(locale) ? U_FOLD_CASE_EXCLUDE_SPECIAL_I : U_FOLD_CASE_DEFAULT;
+    if (NULL != dst) {
+        while (i < src_len && dst_len > 0) {
+            U8_NEXT(src, i, src_len, c);
+            c = u_foldCase(c, options);
+            cp_len = U8_LENGTH(c);
+            if (dst_len < cp_len) {
+                break;
+            }
+            U8_APPEND_UNSAFE(dst, ret, c);
+            dst_len -= cp_len;
+        }
+        if (ret == dst_len) {
+            *status = U_STRING_NOT_TERMINATED_WARNING;
+        } else {
+            dst[ret] = '\0';
+        }
+    }
+    if (i < src_len) {
+        *status = U_BUFFER_OVERFLOW_ERROR;
+        while (i < src_len) {
+            U8_NEXT(src, i, src_len, c);
+            c = u_foldCase(c, options);
+            ret += U8_LENGTH(c);
         }
     }
 
