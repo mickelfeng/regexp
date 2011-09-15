@@ -1387,13 +1387,13 @@ PHP_FUNCTION(utf8_unescape) // TODO: tests
 
 /**
  * TEST:
- * - i?pos/i?rpos
- * - i?str/i?rstr
+ * - (starts|ends)with
+ * - i?pos/i?rpos (before vs after, CI (+ locale) vs CS)
+ * - i?str/i?rstr (idem)
  * - count_chars
  * - word_count
  * - validate
  * - wordwrap
- * - unescape
  **/
 
 /**
@@ -1428,8 +1428,6 @@ PHP_FUNCTION(utf8_unescape) // TODO: tests
  * str_ireplace => utf8_ireplace (TODO: move to Collator)
  * wordwrap => utf8_wordwrap (TODO: tests)
  **/
-
-// stri[r?pos|r?chr] : needs low-level case folding ?
 
 // explode : same
 // implode, join : same
