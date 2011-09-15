@@ -313,10 +313,10 @@ char *utf8_find(
         if (case_insensitive) {
             if (search_first) {
 // TODO: locale + UT + benchmarks
-#ifdef NO_GLOBAL_CASE_FOLDING
-                found = utf8_stristr(haystack + start_cu_offset, haystack_len - start_cu_offset, needle, needle_len, "fr");
+#ifdef GLOBAL_CASE_FOLDING
+                found = utf8_stristr(haystack + start_cu_offset, haystack_len - start_cu_offset, needle, needle_len, locale);
 #else
-                found = utf8_stristr_ex(haystack + start_cu_offset, haystack_len - start_cu_offset, needle, needle_len, "fr");
+                found = utf8_stristr_ex(haystack + start_cu_offset, haystack_len - start_cu_offset, needle, needle_len, locale);
 #endif
             } else {
                 // last
