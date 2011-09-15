@@ -853,7 +853,7 @@ int32_t MY_utf8_foldcase(char *dst, int32_t dst_len, const char *src, int32_t sr
                 return ret;
             }
             r = utf8_char_fold_case(p, ncf, &cf, turkic);
-            memcpy(dst + ret, r, cf);
+            memmove(dst + ret, r, cf);
             ret += cf;
             p += ncf;
         }
