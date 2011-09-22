@@ -113,6 +113,27 @@ int32_t utf8_countChar32(const uint8_t *string, int32_t length)
     return cpcount;
 }
 
+UBool utf8_strHasMoreChar32Than(const uint8_t *string, int32_t length, int32_t number)
+{
+    int32_t cpcount, cucount;
+
+    if (NULL == string || length < 0) {
+        return FALSE;
+    }
+
+    cpcount = 0;
+    while (length > 0 && cpcount < number) {
+        cucount = utf8_count_bytes[*string];
+        if (length >= cucount) {
+            string += cucount;
+            length -= cucount;
+            cpcount++;
+        }
+    }
+
+    return (cpcount == number);
+}
+
 UBool utf8_validate(const uint8_t *string, int32_t string_len, UErrorCode *status)
 {
     int i;
