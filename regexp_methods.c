@@ -204,6 +204,19 @@ PHP_METHOD(Regexp, __construct)
     regexp_ctor(INTERNAL_FUNCTION_PARAM_PASSTHRU);
 }
 
+static void add_offset_pair(zval *result, char *string, int string_len, int offset)
+{
+    zval *match_pair;
+
+    ALLOC_ZVAL(match_pair);
+    array_init(match_pair);
+    INIT_PZVAL(match_pair);
+
+    add_next_index_stringl(match_pair, string, string_len, FALSE);
+    add_next_index_long(match_pair, offset);
+    zend_hash_next_index_insert(Z_ARRVAL_P(result), &match_pair, sizeof(zval *), NULL);
+}
+
 PHP_FUNCTION(regexp_match)
 {
     UBool res = FALSE;
@@ -255,7 +268,7 @@ PHP_FUNCTION(regexp_match)
             if (!(flags & OFFSET_CAPTURE)) {
                 add_index_stringl(subpats, i, group, group_len, FALSE);
             } else {
-                add_index_stringl(subpats, u_countChar32(usubject, l), group, group_len, FALSE);
+                add_offset_pair(subpats, group, group_len, u_countChar32(usubject, l));
             }
         }
     }
@@ -346,13 +359,13 @@ PHP_FUNCTION(regexp_match_all)
                     if (!(flags & OFFSET_CAPTURE)) {
                         add_next_index_stringl(Zres[i], group, group_len, FALSE);
                     } else {
-                        add_index_stringl(Zres[i], u_countChar32(usubject, l), group, group_len, FALSE);
+                        add_offset_pair(Zres[i], group, group_len, u_countChar32(usubject, l));
                     }
                 } else {
                     if (!(flags & OFFSET_CAPTURE)) {
                         add_index_stringl(match_groups, i, group, group_len, FALSE);
                     } else {
-                        add_index_stringl(match_groups, u_countChar32(usubject, l), group, group_len, FALSE);
+                        add_offset_pair(match_groups, group, group_len, u_countChar32(usubject, l));
                     }
                 }
             }
